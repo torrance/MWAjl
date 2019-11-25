@@ -1,0 +1,7 @@
+name = "MWAjl"
+uuid = "19644c59-5b66-4069-b763-6a1e93bbc1aa"
+authors = ["Torrance Hodgson <torrance123@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
