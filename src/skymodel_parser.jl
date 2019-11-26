@@ -101,7 +101,6 @@ function parse_component(f::IOStream)::Component
 
     try
         if length(measurements) > 0
-            sort!(measurements, by=x -> x.ν)
             return Component(position, type, Measurements(measurements))
         else
             return Component(position, type, sed)

@@ -1,0 +1,45 @@
+using Test
+using MWAjl
+
+@testset "SkyModelParser" begin
+    open("data/model.txt") do f
+        @test length(parse_model(f)) == 201
+    end
+
+    @test MWAjl.hms2rad("1h3m14.5s") ≈ 0.27594382694552017
+    @test MWAjl.dms2rad("-14d37m20s") ≈ -0.25520592173605977
+end
+
+@testset "SkyModel" begin
+    @testset "Measurement flux interpolation" begin
+        ms = MWAjl.Measurements(MWAjl.Measurement[
+            MWAjl.Measurement(100E6, Float64[1, 0, 0, 0]),
+            MWAjl.Measurement(300E6, Float64[0.1, 0, 0, 0]),
+        ])
+
+        @test MWAjl.stokes(ms, 100E6) ≈ Float64[1, 0, 0, 0]
+        @test MWAjl.stokes(ms, 200E6) ≈ Float64[0.23392155723884647, 0, 0, 0]
+        @test MWAjl.stokes(ms, 800E6) ≈ Float64[0.012800022683622247, 0, 0, 0]
+
+        # Edge case where one measurement is zero
+        ms = MWAjl.Measurements(MWAjl.Measurement[
+            MWAjl.Measurement(100E6, Float64[1, 0, 0, 0]),
+            MWAjl.Measurement(300E6, Float64[0, 0, 0, 0]),
+        ])
+        @test MWAjl.stokes(ms, 300E6) ≈ Float64[0, 0, 0, 0]
+
+        # Edge case: just one measurement
+        ms = MWAjl.Measurements(MWAjl.Measurement[
+            MWAjl.Measurement(100E6, Float64[1, 0, 0, 0]),
+        ])
+        @test MWAjl.stokes(ms, 300E6) ≈ Float64[1, 0, 0, 0]
+    end
+
+    @testset "SED flux interpolation" begin
+        sed = MWAjl.SED(154E6, [1, 0, 0, 0], [-1])
+        @test MWAjl.stokes(sed, 180E6) ≈ [0.8555555555555556, 0, 0, 0]
+
+        sed = MWAjl.SED(154E6, [1, 0, 0, 0], [-1, 0.001, 0.00003])
+        @test MWAjl.stokes(sed, 180E6) ≈ [0.8649650242737057, 0, 0, 0]
+    end
+end
