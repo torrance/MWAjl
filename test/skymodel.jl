@@ -2,7 +2,7 @@ using Test
 using MWAjl
 
 @testset "SkyModelParser" begin
-    open("data/model.txt") do f
+    open(string(@__DIR__, "/data/model.txt")) do f
         @test length(parse_model(f)) == 201
     end
 
