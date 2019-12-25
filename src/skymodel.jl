@@ -59,7 +59,7 @@ function Base.iterate(ms::Measurements, state)
 end
 
 
-function instrumental(comp::Component)::Array{Float64}
+function instrumental(comp::Component, ν::T)::Array{T} where T <: AbstractFloat
     I, Q, U, V = stokes(comp.spectrum, ν)
 
     # Calculate instrumental polarization

@@ -1,4 +1,4 @@
-//#include "casacore.h"
+// g++ -shared -fPIC -lcasa_casa -lcasa_tables casacore.cpp -o libcasacorejl.so
 
 #include <casacore/casa/Arrays/Array.h>
 #include <casacore/casa/Arrays/IPosition.h>
@@ -9,6 +9,7 @@
 #include <casacore/tables/Tables/ArrayColumn.h>
 #include <casacore/tables/Tables/ColumnDesc.h>
 #include <casacore/tables/Tables/ScalarColumn.h>
+#include <casacore/tables/TaQL/TableParse.h>
 #include <stdio.h>
 
 
@@ -28,12 +29,10 @@ T* getColumn(casacore::Table* tbl, char* name, int* ndim, size_t** shape, int sl
         auto column_desc = table_desc.columnDesc(name);
         if (column_desc.isScalar()) {
             casacore::ScalarColumn<T> column(*tbl, name);
-            *ndim = 1;
             array = column.getColumn();
         }
         else {
             casacore::ArrayColumn<T> column(*tbl, name);
-            *ndim = column.ndimColumn() + 1; // ASSUMES fixed shape array (+1 for rows)
 
             // Only array types can be sliced
             if (sliceLength) {
@@ -51,9 +50,9 @@ T* getColumn(casacore::Table* tbl, char* name, int* ndim, size_t** shape, int sl
         }
 
         // Populate shape
+        *ndim = array.ndim();
         *shape = (size_t*) malloc(*ndim * sizeof(size_t));
         memcpy(*shape, array.shape().storage(), *ndim * sizeof(size_t));
-        
 
         // Get raw storage data
         casacore::Bool deleteIt;
@@ -89,6 +88,11 @@ extern "C" {
 
     void table_close(casacore::Table* tbl) {
         delete tbl;
+    }
+
+    casacore::Table* taql(casacore::Table* tbl, char* query) {
+        auto res = tableCommand(query, *tbl).table();
+        return new casacore::Table(res);
     }
 
     bool column_exists(casacore::Table* tbl, char* name) {
