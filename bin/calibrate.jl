@@ -215,6 +215,7 @@ for timeblock in 1:timeblocks
 end
 
 # Wait on workers to complete and combine final jones matrix
+close(ch)  # When the channel is drained, this signals to workers to return
 for f in futures
     jones .+= fetch(f)
 end
