@@ -49,6 +49,13 @@ function calibrate!(jones::AbstractArray{Complex{Float64}, 3},
                 end
             end
         end
+
+        # More than 4 antenna need to be present to get a good solution
+        if sum(failed) + 4 >= size(jones, 3)
+            @info "Solution block has too many failed antenna ($(sum(failed))) to continue, marking as failed after $iteration iterations"
+            jones[:, :, :] .= NaN
+            return
+        end
     
         # On every even iteration, we test for convergence
         # and also set the new gain solution as the average of the last two,
