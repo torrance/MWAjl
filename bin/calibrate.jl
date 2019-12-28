@@ -229,5 +229,4 @@ for timeblock in axes(jones[5])
     end
 end
 
-@info "Total elapsed: $(duration_read.value / 1000)s (reading) $(duration_calibration.value / 1000)s (calibration)"
-save(File(format"JLD", args["solution"]), "options", args, "jones", jones)
+save(File(format"JLD", args["solution"]), "jones", jones)
