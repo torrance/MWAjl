@@ -10,4 +10,7 @@ export Table, CasaError, column, taql
 include("stefcal.jl")
 export calibrate!, innerloop
 
+include("utils.jl")
+export sanitize!
+
 end

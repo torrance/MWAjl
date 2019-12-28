@@ -132,7 +132,6 @@ jones[1, 1, :, :, :] .= 1
 jones[2, 2, :, :, :] .= 1
 @debug "Created Jones array: ", size(jones)
 
-
 # Initialise workers
 ch = RemoteChannel(() -> Channel{
     Tuple{Array{ComplexF32, 4}, Array{ComplexF32, 4}, Vector{Int}, Vector{Int}, Int, Int}
@@ -190,12 +189,19 @@ for timeblock in 1:timeblocks
         elapsed = @elapsed begin
             data = column(submset, "DATA", blc=[1, batchstart], trc=[4, batchend])
             model = column(submset, "MODEL_DATA", blc=[1, batchstart], trc=[4, batchend])
+            flag = column(submset, "FLAG", blc=[1, batchstart], trc=[4, batchend])
         end
         @debug "Finished fetching new batch of data, elapsed $elapsed"
 
         # Reshape so that Jones matrices from (4,) to (2, 2), as expected by calibrate
         data = reshape(data, 2, 2, size(data)[2:end]...)
         model = reshape(model, 2, 2, size(model)[2:end]...)
+        flag = reshape(flag, 2, 2, size(flag)[2:end]...)
+
+        # Flag and sanitize data (eg. set NaN or Inf to 0)
+        elapsed = @elapsed sanitize!(data, model, flag)
+        flag = nothing  # Allow GC of flag
+        @debug "New data flagged and sanitised, elapsed $elapsed"
 
         # Send data to workers
         for chstart in 1:args["chanwidth"]:(batchend - batchstart + 1)
