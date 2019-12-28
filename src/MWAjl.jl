@@ -8,6 +8,6 @@ include("casacore.jl")
 export Table, CasaError, column, taql
 
 include("stefcal.jl")
-export calibrate!
+export calibrate!, innerloop
 
-end # module
+end
