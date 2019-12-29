@@ -23,7 +23,6 @@ function calibrate!(jones::AbstractArray{Complex{Float64}, 3},
     failed = zeros(Bool, size(jones, 3))
     distances2 = similar(jones, Float64)
     z = zeros(ComplexF64, 2, 2)
-    tmp = zeros(ComplexF64, 2, 2)
     amin2 = amin^2
     amax2 = amax^2
     
@@ -31,7 +30,7 @@ function calibrate!(jones::AbstractArray{Complex{Float64}, 3},
         fill!(top, 0)
         fill!(bot, 0)
 
-        innerloop(data, model, jones, ants1, ants2, top, bot, z, tmp)
+        innerloop(data, model, jones, ants1, ants2, top, bot, z)
 
         for antid in axes(jones, 3)
             if failed[antid]
@@ -95,7 +94,7 @@ function calibrate!(jones::AbstractArray{Complex{Float64}, 3},
     jones[:, :, failed] .= NaN
 end
 
-@inline @inbounds @views function innerloop(data, model, jones, ants1, ants2, top, bot, z, tmp)
+@inline @inbounds @views function innerloop(data, model, jones, ants1, ants2, top, bot, z)
     for row in axes(data, 4)
         ant1 = ants1[row]
         ant2 = ants2[row]
@@ -103,16 +102,12 @@ end
        for chan in axes(data, 3)
             # Andre's calibrate: ( D J M^H ) / ( M J^H J M^H )
             AxBH!(z, jones[:, :, ant2], model[:, :, chan, row])  # J M^H
-            AxB!(tmp, data[:, :, chan, row], z)
-            top[:, :, ant1] .+=  tmp # D * z
-            AHxB!(tmp, z, z)
-            bot[:, :, ant1] .+= tmp
+            plusAxB!(top[:, :, ant1], data[:, :, chan, row], z)  # D * z
+            plusAHxB!(bot[:, :, ant1], z, z)
 
             AxB!(z, jones[:, :, ant1], model[:, :, chan, row])  # J (M^H)^H
-            AHxB!(tmp, data[:, :, chan, row], z)
-            top[:, :, ant2] .+= tmp  # D^H * z
-            AHxB!(tmp, z, z)
-            bot[:, :, ant2] .+= tmp
+            plusAHxB!(top[:, :, ant2], data[:, :, chan, row], z)  # D^H * z
+            plusAHxB!(bot[:, :, ant2], z, z)
 
             # # Stefcal Paper: ( D^H J M ) / ( M^H J^H J M )
             # z = jones[:, :, ant2] * model[:, :, chan, row]'  # J M
@@ -126,7 +121,7 @@ end
     end
 end
 
-# We use our own, hardcoded in-place matrix multiplications, as these
+# We use our own, hardcoded in-place matrix multiplications below, as these
 # are faster since we *know* these are 2x2 matrices, plus we incorporate
 # the adjoint conjugate into the equation which avoids allocations.
 @inline @inbounds function AxB!(C, A, B)
@@ -148,4 +143,25 @@ end
     C[1, 2] = conj(A[1, 1]) * B[1, 2] + conj(A[2, 1]) * B[2, 2]
     C[2, 1] = conj(A[1, 2]) * B[1, 1] + conj(A[2, 2]) * B[2, 1]
     C[2, 2] = conj(A[1, 2]) * B[1, 2] + conj(A[2, 2]) * B[2, 2]
+end
+
+@inline @inbounds function plusAxB!(C, A, B)
+    C[1, 1] += A[1, 1] * B[1, 1] + A[1, 2] * B[2, 1]
+    C[1, 2] += A[1, 1] * B[1, 2] + A[1, 2] * B[2, 2]
+    C[2, 1] += A[2, 1] * B[1, 1] + A[2, 2] * B[2, 1]
+    C[2, 2] += A[2, 1] * B[1, 2] + A[2, 2] * B[2, 2]
+end
+
+@inline @inbounds function plusAxBH!(C, A, B)
+    C[1, 1] += A[1, 1] * conj(B[1, 1]) + A[1, 2] * conj(B[1, 2])
+    C[1, 2] += A[1, 1] * conj(B[2, 1]) + A[1, 2] * conj(B[2, 2])
+    C[2, 1] += A[2, 1] * conj(B[1, 1]) + A[2, 2] * conj(B[1, 2])
+    C[2, 2] += A[2, 1] * conj(B[2, 1]) + A[2, 2] * conj(B[2, 2])
+end
+
+@inline @inbounds function plusAHxB!(C, A, B)
+    C[1, 1] += conj(A[1, 1]) * B[1, 1] + conj(A[2, 1]) * B[2, 1]
+    C[1, 2] += conj(A[1, 1]) * B[1, 2] + conj(A[2, 1]) * B[2, 2]
+    C[2, 1] += conj(A[1, 2]) * B[1, 1] + conj(A[2, 2]) * B[2, 1]
+    C[2, 2] += conj(A[1, 2]) * B[1, 2] + conj(A[2, 2]) * B[2, 2]
 end
