@@ -199,8 +199,12 @@ for timeblock in 1:timeblocks
 
         # Send data to workers
         for chstart in 1:args["chanwidth"]:(batchend - batchstart + 1)
-            chend = chstart + args["chanwidth"] - 1
-            put!(ch, (data[:, :, chstart:chend, :], model[:, :, chstart:chend, :], ants1, ants2, chanblock, timeblock))
+            chend = min(nchans, chstart + args["chanwidth"] - 1)
+            put!(ch, (
+                permutedims(view(data, :, :, chstart:chend, :), (2, 1, 3, 4)),
+                permutedims(view(model, :, :, chstart:chend, :), (2, 1, 3, 4)),
+                ants1, ants2, chanblock, timeblock
+            ))
             chanblock += 1
         end
         data = nothing
