@@ -145,7 +145,8 @@ for _ in 1:Threads.nthreads()
             if isa(e, InvalidStateException)
                 # Channel is closed, time to return our results
             else
-                # TODO: propagate exception to main thread
+                @error e
+                rethrow(e)
             end
         end
         return jones
