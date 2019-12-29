@@ -119,6 +119,12 @@ jones[1, 1, :, :, :] .= 1
 jones[2, 2, :, :, :] .= 1
 @debug "Created Jones array: ", size(jones)
 
+# Precompile calibrate! whilst we read from disk
+Threads.@spawn let datamodel = zeros(ComplexF32, 2, 2, 4, 1), weights = zeros(Float32, 2, 2, 4, 1), ants = Int32[1]
+    elapsed = @elapsed calibrate!(jones[:, :, :,  1, 1], datamodel, datamodel, weights, ants, ants, args["max-iterations"], args["tolerance"]...)
+    @debug "calibrate! precompilation elapsed $elapsed"
+end
+
 # Initialise workers
 ch = Channel{
     Tuple{Array{ComplexF32, 4}, Array{ComplexF32, 4}, Vector{Int}, Vector{Int}, Int, Int}
