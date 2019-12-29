@@ -203,7 +203,6 @@ end
 
 # Wait on workers to complete and combine final jones matrix
 close(ch)  # When the channel is drained, this signals to workers to return
-fill!(jones, 0)
 for task in tasks
     wait(task)
 end
