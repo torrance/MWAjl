@@ -219,12 +219,8 @@ for task in tasks
 end
 
 # Invert jones Matrices so that they can be applied as J D J^H
-for timeblock in axes(jones[5])
-    for chanblock in axes(jones[4])
-        for antid in axes(jones[3])
-            jones[:, :, antid, chanblock, timeblock] .= inv(jones[:, :, antid, chanblock, timeblock])
-        end
-    end
+for timeblock in axes(jones, 5), chanblock in axes(jones, 4), antid in axes(jones, 3)
+    jones[:, :, antid, chanblock, timeblock] .= inv(jones[:, :, antid, chanblock, timeblock])
 end
 
 save(File(format"JLD", args["solution"]), "jones", jones)
