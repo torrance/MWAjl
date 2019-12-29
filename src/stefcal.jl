@@ -102,16 +102,16 @@ end
 
        for chan in axes(data, 3)
             # Andre's calibrate: ( D J M^H ) / ( M J^H J M^H )
-            mul!(z, jones[:, :, ant2], model[:, :, chan, row]')  # J M^H
-            mul!(tmp, data[:, :, chan, row], z)
+            AxBH!(z, jones[:, :, ant2], model[:, :, chan, row])  # J M^H
+            AxB!(tmp, data[:, :, chan, row], z)
             top[:, :, ant1] .+=  tmp # D * z
-            mul!(tmp, z', z)
+            AHxB!(tmp, z, z)
             bot[:, :, ant1] .+= tmp
 
-            mul!(z, jones[:, :, ant1], model[:, :, chan, row])  # J (M^H)^H
-            mul!(tmp, data[:, :, chan, row]', z)
+            AxB!(z, jones[:, :, ant1], model[:, :, chan, row])  # J (M^H)^H
+            AHxB!(tmp, data[:, :, chan, row], z)
             top[:, :, ant2] .+= tmp  # D^H * z
-            mul!(tmp, z', z)
+            AHxB!(tmp, z, z)
             bot[:, :, ant2] .+= tmp
 
             # # Stefcal Paper: ( D^H J M ) / ( M^H J^H J M )
@@ -124,4 +124,28 @@ end
             # bot[:, :, ant2] += z' * z  # z^H z
         end
     end
+end
+
+# We use our own, hardcoded in-place matrix multiplications, as these
+# are faster since we *know* these are 2x2 matrices, plus we incorporate
+# the adjoint conjugate into the equation which avoids allocations.
+@inline @inbounds function AxB!(C, A, B)
+    C[1, 1] = A[1, 1] * B[1, 1] + A[1, 2] * B[2, 1]
+    C[1, 2] = A[1, 1] * B[1, 2] + A[1, 2] * B[2, 2]
+    C[2, 1] = A[2, 1] * B[1, 1] + A[2, 2] * B[2, 1]
+    C[2, 2] = A[2, 1] * B[1, 2] + A[2, 2] * B[2, 2]
+end
+
+@inline @inbounds function AxBH!(C, A, B)
+    C[1, 1] = A[1, 1] * conj(B[1, 1]) + A[1, 2] * conj(B[1, 2])
+    C[1, 2] = A[1, 1] * conj(B[2, 1]) + A[1, 2] * conj(B[2, 2])
+    C[2, 1] = A[2, 1] * conj(B[1, 1]) + A[2, 2] * conj(B[1, 2])
+    C[2, 2] = A[2, 1] * conj(B[2, 1]) + A[2, 2] * conj(B[2, 2])
+end
+
+@inline @inbounds function AHxB!(C, A, B)
+    C[1, 1] = conj(A[1, 1]) * B[1, 1] + conj(A[2, 1]) * B[2, 1]
+    C[1, 2] = conj(A[1, 1]) * B[1, 2] + conj(A[2, 1]) * B[2, 2]
+    C[2, 1] = conj(A[1, 2]) * B[1, 1] + conj(A[2, 2]) * B[2, 1]
+    C[2, 2] = conj(A[1, 2]) * B[1, 2] + conj(A[2, 2]) * B[2, 2]
 end
