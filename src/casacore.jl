@@ -43,7 +43,9 @@ end
 
 function close(tbl::Table)
     lock(tbl.lock)
-    @threadcall((:table_close, libcasacore), Cvoid, (Ptr{Cvoid},), tbl.ptr)
+    # This cannot be a @threadcall, as no task switch is allowed during finalizers.
+    # Otherwise, this results in difficult to diagnose concurrency violation errors.
+    ccall((:table_close, libcasacore), Cvoid, (Ptr{Cvoid},), tbl.ptr)
     unlock(tbl.lock)
 end
 
