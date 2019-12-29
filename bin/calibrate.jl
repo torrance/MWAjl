@@ -1,9 +1,8 @@
 using ArgParse
-using Dates
-using Distributed
 using FileIO
 using JLD
 using Logging
+using MWAjl
 
 s = ArgParseSettings()
 @add_arg_table s begin
@@ -47,10 +46,6 @@ s = ArgParseSettings()
         help="When reading from `datacolumn` and `modelcolumn`, this parameter specifies how many `chanwidth` arrays to read."
         arg_type=Int
         default=1
-    "--processes", "-j"
-        help="Maximum simulaneous CPU processes to use. Default value (-1) will set to number of logical CPU cores. 0 will run synchronously."
-        arg_type=Int
-        default=-1
     "--verbose"
         action=:store_true
     "--debug"
@@ -72,14 +67,6 @@ elseif args["verbose"]
 else
     global_logger(Logging.ConsoleLogger(stdout, Logging.Warn))
 end
-
-# Create workers and load MWAjl
-if args["processes"] < 0
-    @info "Defaulting to use $(Sys.CPU_THREADS) processes"
-    args["processes"] = Sys.CPU_THREADS
-end
-addprocs(args["processes"])
-@everywhere using MWAjl
 
 @info "Measurement set: $(args["mset"])"
 
@@ -133,12 +120,12 @@ jones[2, 2, :, :, :] .= 1
 @debug "Created Jones array: ", size(jones)
 
 # Initialise workers
-ch = RemoteChannel(() -> Channel{
+ch = Channel{
     Tuple{Array{ComplexF32, 4}, Array{ComplexF32, 4}, Vector{Int}, Vector{Int}, Int, Int}
-}(args["nbatch"]))
-futures = Future[]
-for pid in workers()
-    f = remotecall(function (ch, jones, args)
+}(args["nbatch"])
+tasks = Task[]
+for _ in 1:Threads.nthreads()
+    task = Threads.@spawn (function (ch, jones, args)
         try
             while true
                 elapsed = @elapsed begin
@@ -156,8 +143,8 @@ for pid in workers()
             end
         end
         return jones
-    end, pid, ch, jones, args)
-    push!(futures, f)
+    end)(ch, jones, args)
+    push!(tasks, task)
 end
 
 
@@ -217,8 +204,8 @@ end
 # Wait on workers to complete and combine final jones matrix
 close(ch)  # When the channel is drained, this signals to workers to return
 fill!(jones, 0)
-for f in futures
-    jones .+= fetch(f)
+for task in tasks
+    wait(task)
 end
 
 # Invert jones Matrices so that they can be applied as J D J^H
