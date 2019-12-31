@@ -50,9 +50,11 @@ using Test
         jones1 .= 0
         jones1[1, 1, :] .= 1
         jones1[2, 2, :] .= 1
-        iterations = calibrate!(jones1, data, model, weights, ants1, ants2, 50, 1E-5, 1E-8)
+        jones1 = Matrix2x2toArray4(jones1)
+        calibrate!(jones1, Matrix2x2toArray4(data), Matrix2x2toArray4(model), Matrix2x2toArray4(weights), ants1, ants2, 50, 1E-5, 1E-8)
 
         # Correct data with new Jones solution
+        jones1 = Array4toMatrix2x2(jones1)
         for antid in axes(jones1, 3)
             jones1[:, :, antid] = inv(jones1[:, :, antid])
         end

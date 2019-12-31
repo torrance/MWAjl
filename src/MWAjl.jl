@@ -10,6 +10,9 @@ export Table, CasaError, column, taql
 include("stefcal.jl")
 export calibrate!, innerloop
 
+include("matrix2x2.jl")
+export Matrix2x2toArray4, Array4toMatrix2x2, AxB!, AxBH!, AHxB!, plusAxB!, plusAxBH!, plusAHxB!, AdivB!, invA!
+
 include("utils.jl")
 export sanitize!
 
