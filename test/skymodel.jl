@@ -7,6 +7,8 @@ using MWAjl
     end
 
     @test MWAjl.hms2rad("1h3m14.5s") ≈ 0.27594382694552017
+    @test MWAjl.hms2rad("00h05m59.1299s") ≈ 0.026116663322324932
+    @test MWAjl.hms2rad("-0h05m59.1299s") ≈ -0.026116663322324932
     @test MWAjl.dms2rad("-14d37m20s") ≈ -0.25520592173605977
 end
 

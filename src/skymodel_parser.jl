@@ -269,11 +269,18 @@ function hms2rad(hms::String)::Number
             error("rest is not empty")
         end
 
+        # Manually parse for the negative sign.
+        # The more elegant `sign(hours)` doesn't work in the case hours = +/- 0
+        if hours[1] == '-'
+            sign = -1
+        else
+            sign = 1
+        end
         hours = Base.parse(Float64, hours)
         minutes = Base.parse(Float64, minutes)
         seconds = Base.parse(Float64, seconds)
 
-        return sign(hours) * deg2rad(abs(hours) * 15 + (minutes / 60) * 15 + (seconds / 3600) * 15)
+        return sign * deg2rad(abs(hours) * 15 + (minutes / 60) * 15 + (seconds / 3600) * 15)
     catch e
         error("Expected RA of form xxhxxmxxs, got: $(hms)")
     end
@@ -290,11 +297,18 @@ function dms2rad(dms::String)::Number
             error("rest is not empty")
         end
 
+        # Manually parse for the negative sign.
+        # The more elegant `sign(hours)` doesn't work in the case hours = +/- 0
+        if degrees[1] == '-'
+            sign = -1
+        else
+            sign = 1
+        end
         degrees = Base.parse(Float64, degrees)
         minutes = Base.parse(Float64, minutes)
         seconds = Base.parse(Float64, seconds)
 
-        return sign(degrees) * deg2rad(abs(degrees) + (minutes / 60) + (seconds / 3600))
+        return sign * deg2rad(abs(degrees) + (minutes / 60) + (seconds / 3600))
     catch e
         error("Expected Dec of form xxdxxmxxs, got: $(dms)")
     end
