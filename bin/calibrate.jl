@@ -185,8 +185,8 @@ for _ in 1:Threads.nthreads()
                         break
                     end
                 end
-                elapsed = @elapsed converged[chanblock, timeblock] = calibrate!(view(jones, :, :,  chanblock, timeblock), data, model, similar(data, Float32), ants1, ants2, args["max-iterations"], args["tolerance"]...)
-                @info "Calibration (timeblock $timeblock chanblock $chanblock) elapsed $elapsed"
+                elapsed = @elapsed converged[chanblock, timeblock], iterations = calibrate!(view(jones, :, :,  chanblock, timeblock), data, model, similar(data, Float32), ants1, ants2, args["max-iterations"], args["tolerance"]...)
+                @info "Calibration (timeblock $timeblock chanblock $chanblock) complete, $iterations iterations, elapsed $elapsed"
             end
         catch e
             if isa(e, InvalidStateException)

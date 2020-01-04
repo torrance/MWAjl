@@ -53,7 +53,7 @@ top = similar(jones1)
 bot = similar(jones1)
 z = zeros(ComplexF64, 2, 2)
 
-t = @benchmark innerloop($data, $model, j, $ants1, $ants2, $top, $bot, $z) setup=(j = copy($jones1)) evals=1 samples=50 seconds=999
+t = @benchmark calibrationloop($data, $model, j, $ants1, $ants2, $top, $bot, $z) setup=(j = copy($jones1)) evals=1 samples=50 seconds=999
 show(stdout, MIME"text/plain"(), t)
 
 t = @benchmark calibrate!(j, $data, $model, $weights, $ants1, $ants2, 50, 1E-5, 1E-8) setup=(j = copy($jones1)) evals=1 samples=5 seconds=999

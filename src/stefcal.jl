@@ -15,24 +15,27 @@ function calibrate!(jones::AbstractArray{Complex{Float64}, 2},
                     imax::Int,
                     amin::Float64,
                     amax::Float64,
-                   ) where {T <: AbstractFloat, S <: Integer}
+                   )::Tuple{Bool, Int} where {T <: AbstractFloat, S <: Integer}
 
+    nants = size(jones, 2)
     newjones = similar(jones)
     top = similar(jones)
     bot = similar(jones)
-    failed = zeros(Bool, size(jones, 2))
+    failed = zeros(Bool, nants)
     distances2 = similar(jones, Float64)
     z = zeros(ComplexF64, 4)
     amin2 = amin^2
     amax2 = amax^2
     
-    for iteration in 1:imax
+    iteration = 0
+    while iteration < imax
+        iteration += 1
+
         fill!(top, 0)
         fill!(bot, 0)
+        calibrationloop(data, model, jones, ants1, ants2, top, bot, z)
 
-        innerloop(data, model, jones, ants1, ants2, top, bot, z)
-
-        for antid in axes(jones, 2)
+        for antid in 1:nants
             if failed[antid]
                 continue
             end
@@ -41,6 +44,9 @@ function calibrate!(jones::AbstractArray{Complex{Float64}, 2},
                 @views AdivB!(newjones[:, antid], top[:, antid], bot[:, antid])
             catch e
                 if isa(e, SingularException)
+                    # We set failed antennas to 0 rather than NaN to avoid special checks
+                    # for NaN during the inner loop (conditionals are more expensive than just
+                    # doing the extra work), and to allow the use of fastmath.
                     failed[antid] = true
                     jones[:, antid] .= 0
                     newjones[:, antid] .= 0
@@ -51,10 +57,8 @@ function calibrate!(jones::AbstractArray{Complex{Float64}, 2},
         end
 
         # More than 4 antenna need to be present to get a good solution
-        if sum(failed) + 4 >= size(jones, 2)
-            @info "Solution block has too many failed antenna ($(sum(failed))) to continue, marking as failed after $iteration iterations"
-            jones[:, :] .= NaN
-            return
+        if nants - sum(failed) <= 4
+            break
         end
     
         # On every even iteration, we test for convergence
@@ -67,37 +71,41 @@ function calibrate!(jones::AbstractArray{Complex{Float64}, 2},
             # Exit early if we reach stopping threshold
             distance2 = maximum(mean(distances2[:, .~failed], dims=2))
             if distance2 < amax2
-                @info "Solution block converged to amax threshold after $iteration iterations (distance = $(sqrt(distance2)))"
                 break
             end
         else
+            # On odd iterations, we simply update the Jones matrix with the new one
             jones .= newjones
         end
     end
 
-    # If the mean of the whole calibration block fails to meet amin, set it as failed
-    distance2 = maximum(mean(distances2[:, .~failed], dims=2))
-    if distance2 > amin2
-        @info "Solution block failed to converge after $imax iterations, setting as failed for all antennas (distance = $(sqrt(distance2)))"
-        jones[:, :] .= NaN
-        return false
-    elseif distance2 > amax2
-        @info "Solution block converged but did not meet amax threshold after $imax iterations (distance = $(sqrt(distance2)))"
-    end
-    # Set any individual antennas that failed to meet the minimum threshold to NaN
-    for (distance2, idx) in zip(findmax(distances2, dims=1)...)
-        if distance2 > amin2
-            antid = idx[2]
-            @debug "Antenna $antid failed to converge" distance=sqrt(distance2)
-            jones[:, antid] .= NaN
-        end
-    end
-    # And finally set any failed antennas to NaN
+    # Set failed antennas to NaN
     jones[:, failed] .= NaN
-    return true
+
+    # Exit criterion, in order of precedence
+    distance2 = maximum(mean(distances2[:, .~failed], dims=2))
+    # First, if only 4 or fewer antennae remain, mark the solution as trash
+    if nants - sum(failed) <= 4
+        @info "Too many antenna solutions failed ($(sum(failed))) after $iteration iterations, setting solution block as failed"
+        jones[:, :] .= NaN
+        return false, iteration
+    # Second, if we never reached the minimum threshold level, mark the entire solution as failed
+    elseif distance2 > amin2
+        @info "Solution block failed to converge after $iteration iterations, setting as failed for all antennas (distance = $(sqrt(distance2)))"
+        jones[:, :] .= NaN
+        return false, iteration
+    # Third, we exceeded the minimum threshold level, but not the maximum (ie. we didn't break early)
+    elseif distance2 > amax2
+        @info "Solution block converged but did not meet amax threshold after $iteration iterations (distance = $(sqrt(distance2)))"
+        return true, iteration
+    # Finally, we exceeded the maximum threshold level and broke the iterations early
+    else
+        @info "Solution block converged after $iteration iterations (distance = $(sqrt(distance2)))"
+        return true, iteration
+    end
 end
 
-@inline @inbounds @views function innerloop(data, model, jones, ants1, ants2, top, bot, z)
+@inline @inbounds @views @fastmath function calibrationloop(data, model, jones, ants1, ants2, top, bot, z)
     for row in axes(data, 3)
         ant1 = ants1[row]
         ant2 = ants2[row]

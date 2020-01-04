@@ -14,7 +14,7 @@ include("predict.jl")
 export predict
 
 include("stefcal.jl")
-export calibrate!, innerloop
+export calibrate!, calibrationloop
 
 include("matrix2x2.jl")
 export Matrix2x2toArray4, Array4toMatrix2x2, AxB!, AxBH!, AHxB!, plusAxB!, plusAxBH!, plusAHxB!, AdivB!, invA!
