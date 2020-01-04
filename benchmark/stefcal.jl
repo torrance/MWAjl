@@ -38,11 +38,16 @@ for timestep in 1:ntimesteps, ant1 in 1:nants, ant2 in 1:nants
     row += 1
 end
 
+data = Matrix2x2toArray4(data)
+model = Matrix2x2toArray4(model)
+weights = Matrix2x2toArray4(weights)
+
 # Find solution
 jones1 = similar(jones)
 jones1 .= 0
 jones1[1, 1, :] .= 1
 jones1[2, 2, :] .= 1
+jones1 = Matrix2x2toArray4(jones1)
 
 top = similar(jones1)
 bot = similar(jones1)
