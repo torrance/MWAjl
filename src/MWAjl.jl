@@ -5,7 +5,7 @@ include("skymodel_parser.jl")
 export parse_model, Source, Component, SED, Measurements
 
 include("casacore.jl")
-export Table, CasaError, column, taql
+export Table, CasaError, column, taql, Frame, radec2altaz
 
 include("stefcal.jl")
 export calibrate!, innerloop

@@ -1,4 +1,4 @@
-// g++ -shared -fPIC -lcasa_casa -lcasa_tables casacore.cpp -o libcasacorejl.so
+// g++ -shared -fPIC -lcasa_casa -lcasa_tables -lcasa_measures casacore.cpp -o libcasacorejl.so
 
 #include <casacore/casa/Arrays/Array.h>
 #include <casacore/casa/Arrays/IPosition.h>
@@ -10,7 +10,6 @@
 #include <casacore/tables/Tables/ColumnDesc.h>
 #include <casacore/tables/Tables/ScalarColumn.h>
 #include <casacore/tables/TaQL/TableParse.h>
-#include <stdio.h>
 
 
 enum errors {
@@ -172,5 +171,32 @@ extern "C" {
 
     casacore::Complex* get_column_complex(casacore::Table* tbl, char* name, int* ndim, size_t** shape, int sliceLength, size_t* start, size_t* end, int* const error) {
         return getColumn<casacore::Complex>(tbl, name, ndim, shape, sliceLength, start, end, error);
+    }
+
+    // mjd :: Modified Julian Date (UTC)
+    // lon, lat :: longitude and lattitude (radians) of observing site (ITRF)
+    casacore::MeasFrame* frame_new(double mjd, double lon, double lat) {
+        casacore::MPosition pos(
+            casacore::MVPosition(casacore::Quantity(1, "km"), lon, lat),
+            casacore::MPosition::ITRF
+        );
+        casacore::MEpoch time(
+            casacore::MVEpoch(casacore::MVEpoch(casacore::Quantity(mjd, "d"))),
+            casacore::MEpoch::UTC
+        );
+        return new casacore::MeasFrame(pos, time);
+    }
+
+    void frame_del(casacore::MeasFrame* frame) {
+        delete frame;
+    }
+
+    void radec_to_altaz(double ra, double dec, casacore::MeasFrame* frame, double* alt, double* az) {
+        casacore::MDirection::Ref azelref(casacore::MDirection::AZELNE, *frame);
+        casacore::MDirection radec(casacore::Quantity(ra, "rad"), casacore::Quantity(dec, "rad"));
+        casacore::MDirection azel = casacore::MDirection::Convert(radec, azelref)();
+        auto vals = azel.getAngle().getValue("rad"); // [az, el]
+        *alt = vals[1];
+        *az = vals[0];
     }
 }

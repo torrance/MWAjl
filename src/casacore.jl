@@ -8,6 +8,15 @@ mutable struct Table
     end
 end
 
+mutable struct Frame
+    ptr::Ptr{Cvoid}
+    function Frame(ptr::Ptr{Cvoid})
+        frame = new(ptr)
+        finalizer(del, frame)
+        return frame
+    end
+end
+
 @enum CasaError OK TableNoFile ArraySlicerError TableError
 
 @enum(TypeEnum,
@@ -112,4 +121,20 @@ for T in (Bool, Int32, Float32, Float64, Complex{Float32})
         shape = Tuple(unsafe_wrap(Vector{Csize_t}, shape_ptr[], ndim[], own=true))
         return unsafe_wrap(Array{$T}, data_ptr, shape, own=true)
     end
+end
+
+function Frame(mjd::Float64, lon::Float64, lat::Float64)
+    ptr = ccall((:frame_new, libcasacore), Ptr{Cvoid}, (Cdouble, Cdouble, Cdouble), mjd, lon, lat)
+    return Frame(ptr)
+end
+
+function del(frame::Frame)
+    ccall((:frame_del, libcasacore), Cvoid, (Ptr{Cvoid},), frame.ptr)
+end
+
+function radec2altaz(pos::Position, frame::Frame)
+    alt = Ref{Cdouble}(0)
+    az = Ref{Cdouble}(0)
+    ccall((:radec_to_altaz, libcasacore), Cvoid, (Cdouble, Cdouble, Ptr{Cvoid}, Ptr{Cdouble}, Ptr{Cdouble}), pos.ra, pos.dec, frame.ptr, alt, az)
+    return alt[], az[]
 end
