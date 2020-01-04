@@ -86,6 +86,7 @@ end
     jones[1, :] .= 1
     jones[4, :] .= 1
     success, iterations = calibrate!(jones, data, model, weights, ants1, ants2, 100, 1E-5, 1E-8)
+    @test success
 end
 
 # TODO: Test where all solutions fail

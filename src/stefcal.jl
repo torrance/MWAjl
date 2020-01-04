@@ -68,7 +68,7 @@ function calibrate!(jones::AbstractArray{Complex{Float64}, 2},
         # and also set the new gain solution as the average of the last two,
         # as per Stefcal. This speeds up convergence.
         if iseven(iteration)
-            distances[:, .~failed] .= abs.(newjones[:, .~failed] - jones[:, .~failed])
+            distances[:, .~failed] .= abs2.(newjones[:, .~failed] - jones[:, .~failed])
             @debug "Iteration $iteration, failed antennae $(sum(failed)), distances" mean(distances[:, .~failed], dims=2)
             jones .= 0.5 * (jones + newjones)
 
