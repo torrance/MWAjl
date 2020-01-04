@@ -159,14 +159,12 @@ function stokes(ms::Measurements, ν::Float64)::Array{Float64}
 end
 
 
-function polyfit(x::Array{Float64}, y::Array{Float64}, n::Int)
-    length(x) == length(y) || throw(DomainError)
-    1 <= n <= length(x) - 1 || throw(DomainError)
+function lmn(comp::Component, pos0)
+    ra, dec = comp.position.ra, comp.position.dec
+    ra0, dec0 = pos0.ra, pos0.dec
 
-    A = Array{Float64}(undef, length(x), n+1)
-    A[:, 1] .= 1
-    for i in 1:n
-        A[:, i+1] .= A[:, i] .* x
-    end
-    A \ y
+    l = cos(dec) * sin(ra - ra0)
+    m = sin(dec) * cos(dec0) - cos(dec) * sin(dec0) * cos(ra - ra0)
+    n = sqrt(1 - l^2 - m^2)
+    return l, m, n
 end

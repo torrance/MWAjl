@@ -5,7 +5,7 @@ export Beam, beamjones
 
 include("skymodel.jl")
 include("skymodel_parser.jl")
-export parse_model, Source, Component, SED, Measurements
+export parse_model, Source, Component, SED, Measurements, Position, lmn
 
 include("casacore.jl")
 export Table, CasaError, column, taql, Frame, radec2altaz

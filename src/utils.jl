@@ -10,3 +10,15 @@ function sanitize!(data::Array{Complex{T}, 3}, model::Array{Complex{T}, 3}, flag
         end
     end
 end
+
+function polyfit(x::Array{Float64}, y::Array{Float64}, n::Int)
+    length(x) == length(y) || throw(DomainError)
+    1 <= n <= length(x) - 1 || throw(DomainError)
+
+    A = Array{Float64}(undef, length(x), n+1)
+    A[:, 1] .= 1
+    for i in 1:n
+        A[:, i+1] .= A[:, i] .* x
+    end
+    A \ y
+end
