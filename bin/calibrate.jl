@@ -61,11 +61,11 @@ args = parse_args(s)
 
 # Set logging levels
 if args["debug"]
-    global_logger(Logging.ConsoleLogger(stdout, Logging.Debug))
+    global_logger(Logging.ConsoleLogger(stderr, Logging.Debug))
 elseif args["verbose"]
-    global_logger(Logging.ConsoleLogger(stdout, Logging.Info))
+    global_logger(Logging.ConsoleLogger(stderr, Logging.Info))
 else
-    global_logger(Logging.ConsoleLogger(stdout, Logging.Warn))
+    global_logger(Logging.ConsoleLogger(stderr, Logging.Warn))
 end
 
 @info "Measurement set: $(args["mset"])"
