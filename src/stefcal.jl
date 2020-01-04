@@ -80,6 +80,7 @@ function calibrate!(jones::AbstractArray{Complex{Float64}, 2},
     if distance2 > amin2
         @info "Solution block failed to converge after $imax iterations, setting as failed for all antennas (distance = $(sqrt(distance2)))"
         jones[:, :] .= NaN
+        return false
     elseif distance2 > amax2
         @info "Solution block converged but did not meet amax threshold after $imax iterations (distance = $(sqrt(distance2)))"
     end
@@ -93,6 +94,7 @@ function calibrate!(jones::AbstractArray{Complex{Float64}, 2},
     end
     # And finally set any failed antennas to NaN
     jones[:, failed] .= NaN
+    return true
 end
 
 @inline @inbounds @views function innerloop(data, model, jones, ants1, ants2, top, bot, z)

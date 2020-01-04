@@ -117,7 +117,8 @@ chanblocks = cld(nchans, args["chanwidth"])
 jones = zeros(Complex{Float64}, 4, nants, chanblocks, timeblocks)
 jones[1, :, :, :] .= 1
 jones[4, :, :, :] .= 1
-@debug "Created Jones array: ", size(jones)
+converged = zeros(Bool, chanblocks, timeblocks)
+@debug "Created Jones array: $(size(jones))"
 
 # Precompile calibrate! whilst we read from disk
 Threads.@spawn let datamodel = zeros(ComplexF32, 4, 4, 1), weights = zeros(Float32, 4, 4, 1), ants = Int32[1]
@@ -131,14 +132,27 @@ ch = Channel{
 }(args["nbatch"])
 tasks = Task[]
 for _ in 1:Threads.nthreads()
-    task = Threads.@spawn (function (ch, jones, args)
+    task = Threads.@spawn (function (ch, jones, converged, args)
         try
             while true
                 elapsed = @elapsed begin
                     (data, model, ants1, ants2, chanblock, timeblock) = take!(ch)
                 end
                 @info "Reading data (timeblock $timeblock chanblock $chanblock) elapsed $elapsed"
-                elapsed = @elapsed calibrate!(view(jones, :, :,  chanblock, timeblock), data, model, similar(data, Float32), ants1, ants2, args["max-iterations"], args["tolerance"]...)
+                # Initialize with most recent converged solution
+                for i in chanblock:-1:1
+                    if converged[chanblock, timeblock]
+                        jones[:, :, chanblock, timeblock] .= jones[:, :, i, timeblock]
+                        # Sanitize any NaN present and set to Identity
+                        for antid in axes(jones, 2), pol in axes(jones, 1)
+                            if !isfinite(jones[pol, antid, chanblock, timeblock])
+                                jones[pol, antid, chanblock, timeblock] = Int(pol in [1, 4])
+                            end
+                        end
+                        break
+                    end
+                end
+                elapsed = @elapsed converged[chanblock, timeblock] = calibrate!(view(jones, :, :,  chanblock, timeblock), data, model, similar(data, Float32), ants1, ants2, args["max-iterations"], args["tolerance"]...)
                 @info "Calibration (timeblock $timeblock chanblock $chanblock) elapsed $elapsed"
             end
         catch e
@@ -150,7 +164,7 @@ for _ in 1:Threads.nthreads()
             end
         end
         return jones
-    end)(ch, jones, args)
+    end)(ch, jones, converged, args)
     push!(tasks, task)
 end
 
