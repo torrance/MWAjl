@@ -97,9 +97,10 @@ end
 
 function stokes(ms::Measurements, ν::Float64)::Array{Float64}
     # We interpolate in three ways
-    # 1. If just one value is provide, we assume 0 spectral index (ie. constant)
-    # 2. If freq lies between two measured values, we linearly interpolate (in log spaace)
-    #    between these values.
+    # 1. If just one measurement is provide, we assume 0 spectral index (ie. constant)
+    # 2. If freq lies between two measured values, we linearly interpolate (in log space)
+    #    between these values. EXCEPT if either of the two neighbour values is <= 0, then we
+    #    linearly interpolate in linear space.
     # 3. Otherwise, we calculate spectral index using all measured values.
 
     stokes = zeros(4)  # [I Q U V]
@@ -114,7 +115,6 @@ function stokes(ms::Measurements, ν::Float64)::Array{Float64}
         if ms[i].ν <= ν <= ms[i + 1].ν
             # We've found a pair of measurements adjacent to our requested frequency.
             # Loop over stokes parameters
-            # TODO: Handle case where one of the measurements is <= 0
             for j in 1:4
                 # If both measurements are 0, we set to 0
                 if ms[i].stokes[j] ≤ 0 && ms[i + 1].stokes[j] ≤ 0
