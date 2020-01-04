@@ -22,10 +22,8 @@ function calibrate!(jones::AbstractArray{Complex{Float64}, 2},
     top = similar(jones)
     bot = similar(jones)
     failed = zeros(Bool, nants)
-    distances2 = similar(jones, Float64)
+    distances = similar(jones, Float64)
     z = zeros(ComplexF64, 4)
-    amin2 = amin^2
-    amax2 = amax^2
     
     iteration = 0
     while iteration < imax
@@ -60,17 +58,18 @@ function calibrate!(jones::AbstractArray{Complex{Float64}, 2},
         if nants - sum(failed) <= 4
             break
         end
-    
+
         # On every even iteration, we test for convergence
         # and also set the new gain solution as the average of the last two,
         # as per Stefcal. This speeds up convergence.
         if iseven(iteration)
-            distances2[:, .~failed] .= abs2.(newjones[:, .~failed] - jones[:, .~failed])
+            distances[:, .~failed] .= abs.(newjones[:, .~failed] - jones[:, .~failed])
+            @debug "Iteration $iteration, failed antennae $(sum(failed)), distances" mean(distances[:, .~failed], dims=2)
             jones .= 0.5 * (jones + newjones)
 
             # Exit early if we reach stopping threshold
-            distance2 = maximum(mean(distances2[:, .~failed], dims=2))
-            if distance2 < amax2
+            distance = maximum(mean(distances[:, .~failed], dims=2))
+            if distance < amax
                 break
             end
         else
@@ -83,24 +82,24 @@ function calibrate!(jones::AbstractArray{Complex{Float64}, 2},
     jones[:, failed] .= NaN
 
     # Exit criterion, in order of precedence
-    distance2 = maximum(mean(distances2[:, .~failed], dims=2))
+    distance = maximum(mean(distances[:, .~failed], dims=2))
     # First, if only 4 or fewer antennae remain, mark the solution as trash
     if nants - sum(failed) <= 4
         @info "Too many antenna solutions failed ($(sum(failed))) after $iteration iterations, setting solution block as failed"
         jones[:, :] .= NaN
         return false, iteration
     # Second, if we never reached the minimum threshold level, mark the entire solution as failed
-    elseif distance2 > amin2
-        @info "Solution block failed to converge after $iteration iterations, setting as failed for all antennas (distance = $(sqrt(distance2)))"
+    elseif distance > amin
+        @info "Solution block failed to converge after $iteration iterations, setting as failed for all antennas (distance = $distance)"
         jones[:, :] .= NaN
         return false, iteration
     # Third, we exceeded the minimum threshold level, but not the maximum (ie. we didn't break early)
-    elseif distance2 > amax2
-        @info "Solution block converged but did not meet amax threshold after $iteration iterations (distance = $(sqrt(distance2)))"
+    elseif distance > amax
+        @info "Solution block converged but did not meet amax threshold after $iteration iterations (distance = $distance)"
         return true, iteration
     # Finally, we exceeded the maximum threshold level and broke the iterations early
     else
-        @info "Solution block converged after $iteration iterations (distance = $(sqrt(distance2)))"
+        @info "Solution block converged after $iteration iterations (distance = $distance)"
         return true, iteration
     end
 end
