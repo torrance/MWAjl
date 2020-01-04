@@ -10,6 +10,9 @@ export parse_model, Source, Component, SED, Measurements, Position, lmn
 include("casacore.jl")
 export Table, CasaError, column, taql, Frame, radec2altaz
 
+include("predict.jl")
+export predict
+
 include("stefcal.jl")
 export calibrate!, innerloop
 

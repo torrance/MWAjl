@@ -8,6 +8,7 @@ s = ArgParseSettings()
 @add_arg_table s begin
     "--model", "-m"
         help="The path to the model file (aoskymodel 1.2 format). If absent, will use MODEL_DATA column (ie. self-calibration)."
+        arg_type=String
     "--chanwidth", "-c"
         help="Find calibration solutions for blocks of channels of `chanwidth`. Set to 0 to find a single solution for all channels."
         arg_type=Int
@@ -68,9 +69,26 @@ else
     global_logger(Logging.ConsoleLogger(stderr, Logging.Warn))
 end
 
-@info "Measurement set: $(args["mset"])"
+# Determine if we are running selfcalibration or predicting our own model
+# If the latter, read in the model and construct a list of components
+if args["model"] === nothing
+    global selfcal = true
+    @info "Selfcalibration mode (using $(args["modelcolumn"]) column as model)"
+else
+    global selfcal = false
+    global comps = Component[]
+    open(string(args["model"])) do f
+        sources = parse_model(f)
+        for source in sources, comp in source.components
+            push!(comps, comp)
+        end
+    end
+    @info "Skymodel model mode with $(length(comps)) components"
+end
 
 # Lets get the metadata about this measurement set
+@info "Measurement set: $(args["mset"])"
+
 # Frequency
 spw = Table(args["mset"] * "/SPECTRAL_WINDOW")
 freqs = column(spw, "CHAN_FREQ")
@@ -80,7 +98,7 @@ if size(freqs, 2) > 1
     exit(1)
 end
 freqs = freqs[:, 1]
-λs = 299792458 ./ freqs
+lambdas = 299792458 ./ freqs
 nchans = length(freqs)
 @info " Total channels: $nchans"
 
@@ -95,6 +113,21 @@ antennas = Table(args["mset"] * "/ANTENNA")
 nants = size(column(antennas, "POSITION"), 2)
 antennas = nothing
 @info " Number of antennas: $nants"
+
+# Phase center
+pos0 = Position(
+    column(Table(args["mset"] * "/FIELD"), "PHASE_DIR")[:, 1]...
+)
+@info " Phase center RA = $(rad2deg(pos0.ra)) Dec = $(rad2deg(pos0.dec))"
+
+# Get beam delays
+if args["apply-beam"] !== nothing
+    global delays = column(Table(args["mset"] * "/MWA_TILE_POINTING"), "DELAYS")[:, 1]
+    @info " MWA tile delays: $delays"
+    global beam = Beam(delays)
+else
+    global beam = nothing
+end
 
 if args["chanwidth"] < 1
     args["chanwidth"] = length(freqs)
@@ -187,19 +220,33 @@ for timeblock in 1:timeblocks
     ants1 = column(submset, "ANTENNA1") .+ 1
     ants2 = column(submset, "ANTENNA2") .+ 1
 
+    # Additional columns needed for prediction
+    local uvws, times
+    if !selfcal
+        uvws = column(submset, "UVW")
+        times = column(submset, "TIME")
+    end
+
     chanblock = 1
     batchsize = args["chanwidth"] * args["nbatch"]
     for batchstart in 1:batchsize:nchans
         batchend = min(nchans, batchstart + batchsize - 1)
 
-        # Read in data from measurement set
+        # Fetch calibration data
         @debug "Fetching new batch of data"
         elapsed = @elapsed begin
-            data = column(submset, "DATA", blc=[1, batchstart], trc=[4, batchend])
-            model = column(submset, "MODEL_DATA", blc=[1, batchstart], trc=[4, batchend])
+            if selfcal
+                model = column(submset, args["modelcolumn"], blc=[1, batchstart], trc=[4, batchend])
+            else
+                model = predict(uvws, times, lambdas[batchstart:batchend], comps, beam, pos0)
+            end
+            data = column(submset, args["datacolumn"], blc=[1, batchstart], trc=[4, batchend])
             flag = column(submset, "FLAG", blc=[1, batchstart], trc=[4, batchend])
         end
         @debug "Finished fetching new batch of data, elapsed $elapsed"
+
+        model = fetch(model)
+        @debug "Time waiting on prediction result elapsed $elapsed"
 
         # Flag and sanitize data (eg. set NaN or Inf to 0)
         elapsed = @elapsed sanitize!(data, model, flag)

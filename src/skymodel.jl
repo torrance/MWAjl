@@ -69,7 +69,7 @@ function instrumental(comp::Component, ν::T)::Array{T} where T <: AbstractFloat
     YY = I - Q
 
     # TODO: Add beam
-    return [XX XY; YX YY]
+    return [XX, XY, YX, YY]
 end
 
 
