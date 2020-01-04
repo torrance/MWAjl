@@ -161,7 +161,7 @@ end
 
 # Initialise workers
 ch = Channel{
-    Tuple{Array{ComplexF32, 3}, Array{ComplexF32, 3}, Vector{Int}, Vector{Int}, Int, Int}
+    Tuple{Array{ComplexF32, 3}, Array{ComplexF32, 3}, Array{Float32, 3}, Vector{Int}, Vector{Int}, Int, Int}
 }(args["nbatch"])
 tasks = Task[]
 for _ in 1:Threads.nthreads()
@@ -169,7 +169,7 @@ for _ in 1:Threads.nthreads()
         try
             while true
                 elapsed = @elapsed begin
-                    (data, model, ants1, ants2, chanblock, timeblock) = take!(ch)
+                    (data, model, weights, ants1, ants2, chanblock, timeblock) = take!(ch)
                 end
                 @info "Reading data (timeblock $timeblock chanblock $chanblock) elapsed $elapsed"
                 # Initialize with most recent converged solution
@@ -185,7 +185,7 @@ for _ in 1:Threads.nthreads()
                         break
                     end
                 end
-                elapsed = @elapsed converged[chanblock, timeblock], iterations = calibrate!(view(jones, :, :,  chanblock, timeblock), data, model, similar(data, Float32), ants1, ants2, args["max-iterations"], args["tolerance"]...)
+                elapsed = @elapsed converged[chanblock, timeblock], iterations = calibrate!(view(jones, :, :,  chanblock, timeblock), data, model, weights, ants1, ants2, args["max-iterations"], args["tolerance"]...)
                 @info "Calibration (timeblock $timeblock chanblock $chanblock) complete, $iterations iterations, elapsed $elapsed"
             end
         catch e
@@ -242,6 +242,7 @@ for timeblock in 1:timeblocks
             end
             data = column(submset, args["datacolumn"], blc=[1, batchstart], trc=[4, batchend])
             flag = column(submset, "FLAG", blc=[1, batchstart], trc=[4, batchend])
+            weights = column(submset, "WEIGHT_SPECTRUM", blc=[1, batchstart], trc=[4, batchend])
         end
         @debug "Finished fetching new batch of data, elapsed $elapsed"
 
@@ -259,6 +260,7 @@ for timeblock in 1:timeblocks
             put!(ch, (
                 data[:, chstart:chend, :],
                 model[:, chstart:chend, :],
+                weights[:, chstart:chend, :],
                 ants1, ants2, chanblock, timeblock
             ))
             chanblock += 1

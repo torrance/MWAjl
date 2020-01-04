@@ -24,6 +24,11 @@ function calibrate!(jones::AbstractArray{Complex{Float64}, 2},
     failed = zeros(Bool, nants)
     distances = similar(jones, Float64)
     z = zeros(ComplexF64, 4)
+
+    # Weight data
+    weights = minimum(weights, dims=1)  # Set constant weight per polarization group
+    data .*= weights
+    model .*= weights
     
     iteration = 0
     while iteration < imax

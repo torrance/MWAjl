@@ -13,7 +13,7 @@ using Test
         model = zeros(ComplexF32, 2, 2, nchans, nrows)
         ants1 = zeros(Int, nrows)
         ants2 = zeros(Int, nrows)
-        weights = randn(Float32, size(data)...)
+        weights = randn(Float32, 4, nchans, nrows)
         weights .= abs.(1 .+ weights)
 
         # Initialize data
@@ -51,7 +51,7 @@ using Test
         jones1[1, 1, :] .= 1
         jones1[2, 2, :] .= 1
         jones1 = Matrix2x2toArray4(jones1)
-        calibrate!(jones1, Matrix2x2toArray4(data), Matrix2x2toArray4(model), Matrix2x2toArray4(weights), ants1, ants2, 50, 1E-5, 1E-8)
+        calibrate!(jones1, Matrix2x2toArray4(data), Matrix2x2toArray4(model), weights, ants1, ants2, 50, 1E-5, 1E-8)
 
         # Correct data with new Jones solution
         jones1 = Array4toMatrix2x2(jones1)
