@@ -83,8 +83,10 @@ function calibrate!(jones::AbstractArray{Complex{Float64}, 2},
         end
     end
 
-    # Set failed antennas to NaN
+    # Set failed antennas to NaN. Also set zero solutions as failed,
+    # which might arise if data for an antenna was zero, for some reason.
     jones[:, failed] .= NaN
+    jones[:, (sum(jones, dims=1) .== 0)[:]] .= NaN
 
     # Exit criterion, in order of precedence
     distance = maximum(mean(distances[:, .~failed], dims=2))
