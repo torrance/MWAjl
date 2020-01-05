@@ -1,6 +1,7 @@
 using CuArrays
 using CUDAdrv
 using CUDAnative
+using StaticArrays
 
 function predict(
         uvws::Array{T, 2},
@@ -86,7 +87,7 @@ function predict(
         model_d = CuArrays.fill(ComplexF32(0), 4, length(lambdas), length(times))
         uvws_d, lambdas_d, timeidxs_d, lmns_d, fluxes_d = CuArray(convert(Array{Float32}, uvws)), CuArray(convert(Array{Float32}, lambdas)), CuArray(timeidxs), CuArray(convert(Array{Float32}, lmns)), CuArray(convert(Array{ComplexF32}, fluxes))
         elapsed = Base.@elapsed CuArrays.@sync begin
-            @cuda blocks=256 threads=256 predictionloop!(model_d, uvws_d, lambdas_d, timeidxs_d, lmns_d, fluxes_d)
+            @cuda blocks=256 threads=256 shmem=sizeof(Float32)*length(lmns) + sizeof(Float32)*length(lambdas) predictionloop!(model_d, uvws_d, lambdas_d, timeidxs_d, lmns_d, fluxes_d)
         end
         @debug "Predicted model (GPU) elapsed $elapsed"
 
@@ -129,19 +130,49 @@ end
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     stride = blockDim().x * gridDim().x
 
-    for row in index:stride:size(model, 3);
+    # Prefetch regularly used data into the (faster) shared memory.
+    # This is limited in size, so only lmns and lambdas can reliably fit.
+    # However, there's only a very marginal speed increase from doing
+    # this, presumably because we are dominated by the cost of the complex
+    # exponential function. Nonetheless, we leave it here as an example and
+    # reminder that this was tried.
+    lmns_shm = @cuDynamicSharedMem(Float32, size(lmns))
+    for i in threadIdx().x:blockDim().x:length(lmns)
+        lmns_shm[i] = lmns[i]
+    end
+
+    lambdas_shm = @cuDynamicSharedMem(Float32, size(lambdas), offset=sizeof(Float32) * length(lmns))
+    for i in threadIdx().x:blockDim().x:length(lambdas)
+        lambdas_shm[i] = lambdas[i]
+    end
+
+    # Wait for all threads to finish setting the shared memory cache, before we
+    # read from it, so as to avoid race conditions.
+    sync_threads()
+
+    # We allocate a static vector locally per thread to do inplace
+    # addition, so that we write out to model just once per index.
+    # This has a significant performance improvement.
+    cell = MVector{4, ComplexF32}(undef)
+
+    for row in index:stride:size(model, 3)
         for chan in axes(model, 2)
+            fill!(cell, 0)
             for compidx in axes(fluxes, 2)
                 phase = CUDAnative.exp(
                     2im * π * (
-                        uvws[1, row] * lmns[1, compidx] +
-                        uvws[2, row] * lmns[2, compidx] +
-                        uvws[3, row] * (lmns[3, compidx] - 1)
-                    ) / lambdas[chan]
+                        uvws[1, row] * lmns_shm[1, compidx] +
+                        uvws[2, row] * lmns_shm[2, compidx] +
+                        uvws[3, row] * (lmns_shm[3, compidx] - 1)
+                    ) / lambdas_shm[chan]
                 )
                 for pol in 1:4
-                    model[pol, chan, row] += fluxes[pol, compidx, chan, timeidxs[row]] * phase
+                    cell[pol] += fluxes[pol, compidx, chan, timeidxs[row]] * phase
                 end
+            end
+
+            for pol in 1:4
+                model[pol, chan, row] = cell[pol]
             end
         end
     end
