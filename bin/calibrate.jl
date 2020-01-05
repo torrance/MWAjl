@@ -155,7 +155,7 @@ converged = zeros(Bool, chanblocks, timeblocks)
 
 # Precompile calibrate! whilst we read from disk
 Threads.@spawn let datamodel = zeros(ComplexF32, 4, 4, 1), weights = zeros(Float32, 4, 4, 1), ants = Int32[1]
-    elapsed = @elapsed calibrate!(jones[:, :,  1, 1], datamodel, datamodel, weights, ants, ants, args["max-iterations"], args["tolerance"]...)
+    elapsed = Base.@elapsed calibrate!(jones[:, :,  1, 1], datamodel, datamodel, weights, ants, ants, args["max-iterations"], args["tolerance"]...)
     @debug "calibrate! precompilation elapsed $elapsed"
 end
 
@@ -168,7 +168,7 @@ for _ in 1:Threads.nthreads()
     task = Threads.@spawn (function (ch, jones, converged, args)
         try
             while true
-                elapsed = @elapsed begin
+                elapsed = Base.@elapsed begin
                     (data, model, weights, ants1, ants2, chanblock, timeblock) = take!(ch)
                 end
                 @info "Reading data (timeblock $timeblock chanblock $chanblock) elapsed $elapsed"
@@ -185,7 +185,7 @@ for _ in 1:Threads.nthreads()
                         break
                     end
                 end
-                elapsed = @elapsed converged[chanblock, timeblock], iterations = calibrate!(view(jones, :, :,  chanblock, timeblock), data, model, weights, ants1, ants2, args["max-iterations"], args["tolerance"]...)
+                elapsed = Base.@elapsed converged[chanblock, timeblock], iterations = calibrate!(view(jones, :, :,  chanblock, timeblock), data, model, weights, ants1, ants2, args["max-iterations"], args["tolerance"]...)
                 @info "Calibration (timeblock $timeblock chanblock $chanblock) complete, $iterations iterations, elapsed $elapsed"
             end
         catch e
@@ -206,7 +206,7 @@ for timeblock in 1:timeblocks
     t1 = (timeblock - 1) * args["timewidth"] + 1
     t2 = min(ntimesteps, timeblock * args["timewidth"])
     submset = taql("
-        select * from \$1 where 
+        select * from \$1 where
         ANTENNA1 <> ANTENNA2
         and not FLAG_ROW
         and SUM(SUMSQR(UVW)) > $(args["minuv"])
@@ -234,7 +234,7 @@ for timeblock in 1:timeblocks
 
         # Fetch calibration data
         @debug "Fetching new batch of data"
-        elapsed = @elapsed begin
+        elapsed = Base.@elapsed begin
             if selfcal
                 model = column(submset, args["modelcolumn"], blc=[1, batchstart], trc=[4, batchend])
             else
@@ -250,7 +250,7 @@ for timeblock in 1:timeblocks
         @debug "Time waiting on prediction result elapsed $elapsed"
 
         # Flag and sanitize data (eg. set NaN or Inf to 0)
-        elapsed = @elapsed sanitize!(data, model, flag)
+        elapsed = Base.@elapsed sanitize!(data, model, flag)
         flag = nothing  # Allow GC of flag
         @debug "New data flagged and sanitised, elapsed $elapsed"
 
