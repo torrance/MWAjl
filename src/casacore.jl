@@ -124,7 +124,7 @@ for T in (Bool, Int32, Float32, Float64, Complex{Float32})
 end
 
 function Frame(mjd::Float64, lon::Float64, lat::Float64)
-    ptr = ccall((:frame_new, libcasacore), Ptr{Cvoid}, (Cdouble, Cdouble, Cdouble), mjd, lon, lat)
+    ptr = @threadcall((:frame_new, libcasacore), Ptr{Cvoid}, (Cdouble, Cdouble, Cdouble), mjd, lon, lat)
     return Frame(ptr)
 end
 
@@ -135,6 +135,6 @@ end
 function radec2altaz(pos::Position, frame::Frame)
     alt = Ref{Cdouble}(0)
     az = Ref{Cdouble}(0)
-    ccall((:radec_to_altaz, libcasacore), Cvoid, (Cdouble, Cdouble, Ptr{Cvoid}, Ptr{Cdouble}, Ptr{Cdouble}), pos.ra, pos.dec, frame.ptr, alt, az)
+    @threadcall((:radec_to_altaz, libcasacore), Cvoid, (Cdouble, Cdouble, Ptr{Cvoid}, Ptr{Cdouble}, Ptr{Cdouble}), pos.ra, pos.dec, frame.ptr, alt, az)
     return alt[], az[]
 end

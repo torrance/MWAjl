@@ -47,6 +47,9 @@ s = ArgParseSettings()
         help="When reading from `datacolumn` and `modelcolumn`, this parameter specifies how many `chanwidth` arrays to read."
         arg_type=Int
         default=1
+    "--gpu"
+        help="Use GPU acceleration for some calculations."
+        action=:store_true
     "--verbose"
         action=:store_true
     "--debug"
@@ -73,7 +76,7 @@ end
 # If the latter, read in the model and construct a list of components
 if args["model"] === nothing
     global selfcal = true
-    @info "Selfcalibration mode (using $(args["modelcolumn"]) column as model)"
+    @info "Self-calibration mode (using $(args["modelcolumn"]) column as model)"
 else
     global selfcal = false
     global comps = Component[]
@@ -83,7 +86,7 @@ else
             push!(comps, comp)
         end
     end
-    @info "Skymodel model mode with $(length(comps)) components"
+    @info "Sky model mode with $(length(comps)) components"
 end
 
 # Lets get the metadata about this measurement set
@@ -124,7 +127,7 @@ pos0 = Position(
 if args["apply-beam"] !== nothing
     global delays = column(Table(args["mset"] * "/MWA_TILE_POINTING"), "DELAYS")[:, 1]
     @info " MWA tile delays: $delays"
-    global beam = Beam(delays)
+    global beam = AOBeam(delays, args["apply-beam"])
 else
     global beam = nothing
 end
@@ -238,7 +241,7 @@ for timeblock in 1:timeblocks
             if selfcal
                 model = column(submset, args["modelcolumn"], blc=[1, batchstart], trc=[4, batchend])
             else
-                model = predict(uvws, times, lambdas[batchstart:batchend], comps, beam, pos0)
+                model = predict(uvws, times, lambdas[batchstart:batchend], comps, beam, pos0, gpu=args["gpu"])
             end
             data = column(submset, args["datacolumn"], blc=[1, batchstart], trc=[4, batchend])
             flag = column(submset, "FLAG", blc=[1, batchstart], trc=[4, batchend])

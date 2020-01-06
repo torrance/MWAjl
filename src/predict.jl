@@ -8,7 +8,7 @@ function predict(
         times::Array{T, 1},
         lambdas::Array{T, 1},
         comps::Array{Component, 1},
-        beam::Union{Beam, Nothing},
+        beam::Union{Beam, AOBeam, Nothing},
         pos0::Position;
         gpu::Bool = false,
     ) where {T <: AbstractFloat}
@@ -64,25 +64,32 @@ function predict(
         @debug "Calculated AltAz positions of $(length(comps)) at $(length(unique_times)) timesteps, elapsed $elapsed"
 
         # Get beam Jones matrix, and correct model fluxes to apparent fluxes
-        tmp = zeros(Complex{T}, 4)
-        for (chan, freq) in enumerate(freqs)
-            elapsed = Base.@elapsed begin
-                jones = reshape(
-                    beamjones(beam, freq, alts, azs),
-                    4, length(comps), length(unique_times)
-                )
+        let prior_coarse_freq = 0.0, tmp = zeros(Complex{T}, 4), jones = Array{ComplexF64, 3}(undef, 0, 0, 0)
+            elapsed = Base.@elapsed for (chan, freq) in enumerate(freqs)
+                begin
+                    # MWA Beam is calculated on coarse channels ~ 1.28 MHz
+                    # There's no need to calculate the beam values more than once
+                    # in this interval.
+                    current_coarse_freq = closest_freq(beam, freq)
+                    if current_coarse_freq != prior_coarse_freq
+                        jones = reshape(
+                            beamjones(beam, freq, alts, azs),
+                            4, length(comps), length(unique_times)
+                        )
+                        prior_coarse_freq = current_coarse_freq
+                    end
+                end
+
+                # apparent = J A J^H
+                @views for timeidx in axes(jones, 3), compidx in axes(jones, 2)
+                    AxBH!(tmp, fluxes[:, compidx, chan, timeidx], jones[:, compidx, timeidx])
+                    AxB!(fluxes[:, compidx, chan, timeidx], jones[:, compidx, timeidx], tmp)
+                end
             end
-            @debug "Retrieved beam Jones values, elapsed $elapsed"
-            # apparent = J A J^H
-            elapsed = Base.@elapsed @views for timeidx in axes(jones, 3), compidx in axes(jones, 2)
-                AxBH!(tmp, fluxes[:, compidx, chan, timeidx], jones[:, compidx, timeidx])
-                AxB!(fluxes[:, compidx, chan, timeidx], jones[:, compidx, timeidx], tmp)
-            end
-            @debug "Applied beam correction to fluxes, elapsed $elapsed"
         end
+        @debug "Calculated and applied beam corrections, elapsed $elapsed"
     end
 
-    # Allocate model array
     if gpu
         model_d = CuArrays.fill(ComplexF32(0), 4, length(lambdas), length(times))
         uvws_d, lambdas_d, timeidxs_d, lmns_d, fluxes_d = CuArray(convert(Array{Float32}, uvws)), CuArray(convert(Array{Float32}, lambdas)), CuArray(timeidxs), CuArray(convert(Array{Float32}, lmns)), CuArray(convert(Array{ComplexF32}, fluxes))

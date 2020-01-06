@@ -29,7 +29,7 @@ function calibrate!(jones::AbstractArray{Complex{Float64}, 2},
     weights = minimum(weights, dims=1)  # Set constant weight per polarization group
     data .*= weights
     model .*= weights
-    
+
     iteration = 0
     while iteration < imax
         iteration += 1
