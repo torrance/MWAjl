@@ -1,5 +1,8 @@
 module MWAjl
 
+include("aobeam.jl")
+export AOBeam, beamjones, closest_freq
+
 include("beam.jl")
 export Beam, beamjones
 
