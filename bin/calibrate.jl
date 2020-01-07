@@ -44,9 +44,9 @@ s = ArgParseSettings()
         arg_type=String
         default="MODEL_DATA"
     "--nbatch"
-        help="When reading from `datacolumn` and `modelcolumn`, this parameter specifies how many `chanwidth` arrays to read."
+        help="When reading from `datacolumn` and `modelcolumn`, this parameter specifies how many `chanwidth` arrays to read. Ideally, this needs to be large enough so that calibration workers aren't waiting on data to be read from disk, but not so large that too long is spent waiting at the start of the program for the calibration workers to begin work. This parameter also affects maximum memory usage. Default (0) sets this to 200 / --chanwidth."
         arg_type=Int
-        default=1
+        default=0
     "--gpu"
         help="Use GPU acceleration for some calculations."
         action=:store_true
@@ -101,7 +101,7 @@ else
     global beam = nothing
 end
 
-# Set default channel width if --chanwidth==0
+# Set channel width if --chanwidth==0
 if args["chanwidth"] < 1 || args["chanwidth"] > mset.nchans
     args["chanwidth"] = mset.nchans
 end
@@ -115,6 +115,12 @@ if args["timewidth"] < 1 || args["timewidth"] > mset.ntimesteps
 end
 if mset.ntimesteps % args["timewidth"] != 0
     @warn "--timewidth does not evenly divide the total number of time steps"
+end
+
+# Set default --nbatch if --nbatch==0
+if args["nbatch"] < 1
+    args["nbatch"] = max(1, floor(Int, 200 / args["chanwidth"]))
+    @info "Set --nbatch = $(args["nbatch"])"
 end
 
 # Based on time width and chan width, calculate the number of timeblocks and chanblocks
