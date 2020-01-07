@@ -102,7 +102,7 @@ else
 end
 
 # Set default channel width if --chanwidth==0
-if args["chanwidth"] < 1
+if args["chanwidth"] < 1 || args["chanwidth"] > mset.nchans
     args["chanwidth"] = mset.nchans
 end
 if mset.nchans % args["chanwidth"] != 0
@@ -110,17 +110,20 @@ if mset.nchans % args["chanwidth"] != 0
 end
 
 # Set default time width if --timewidth==0
-if args["timewidth"] < 1
+if args["timewidth"] < 1 || args["timewidth"] > mset.ntimesteps
     args["timewidth"] = mset.ntimesteps
 end
 if mset.ntimesteps % args["timewidth"] != 0
     @warn "--timewidth does not evenly divide the total number of time steps"
 end
 
-# Initialize final Jones matrix to Identity
-# [pol, pol, antid, channels, timesteps]
+# Based on time width and chan width, calculate the number of timeblocks and chanblocks
 timeblocks = cld(mset.ntimesteps, args["timewidth"])
 chanblocks = cld(mset.nchans, args["chanwidth"])
+@info "Calibrating with $timeblocks independent timeblocks and $chanblocks independent chanblocks"
+
+# Initialize final Jones matrix to Identity
+# [pol, pol, antid, channels, timesteps]
 jones = zeros(Complex{Float64}, 4, mset.nants, chanblocks, timeblocks)
 jones[1, :, :, :] .= 1
 jones[4, :, :, :] .= 1
