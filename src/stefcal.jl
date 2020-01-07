@@ -1,5 +1,5 @@
 using Statistics: mean
-using LinearAlgebra: SingularException, mul!
+using LinearAlgebra: SingularException
 
 #=
 Assumption is that all autocorrelations are removed from data
