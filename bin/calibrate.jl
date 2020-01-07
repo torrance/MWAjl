@@ -1,6 +1,4 @@
 using ArgParse
-using FileIO
-using JLD
 using Logging
 using MWAjl
 
@@ -166,4 +164,14 @@ for timeblock in axes(jones, 4), chanblock in axes(jones, 3), antid in axes(jone
     @views invA!(jones[:, antid, chanblock, timeblock])
 end
 
-save(File(format"JLD", args["solution"]), "jones", jones)
+# Write out the solution
+open(args["solution"], "w") do f
+    # First expand the Jones array for each channel
+    expandedjones = zeros(Complex{Float64}, 4, mset.nants, mset.nchans, timeblocks)
+    for chan in 1:mset.nchans
+        chanblock = ceil(Int, chan / args["chanwidth"])
+        expandedjones[:, :, chan, :] .= jones[:, :, chanblock, :]
+    end
+    # Now write the solution to the binary format we've inherited from AOCal
+    writesolution(f, expandedjones, mset.unique_timesteps[1], mset.unique_timesteps[end])
+end

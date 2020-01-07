@@ -16,6 +16,9 @@ export MeasurementSet
 include("predict.jl")
 export predict
 
+include("solutionfile.jl")
+export writesolution
+
 include("stefcal.jl")
 export calibrate!, calibrationloop
 
