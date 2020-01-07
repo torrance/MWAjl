@@ -1,16 +1,35 @@
-# For the meantime, this is just a wrapper of Python mwabeam
-using PyCall
-
-struct Beam
+mutable struct Beam
     delays::Array{Int32, 1}
+    path::String
+    ptr::Ptr{Cvoid}
 end
 
-function beamjones(beam::Beam, freq, alt, az)
-    jones = mwapb.MWA_Tile_full_EE(π/2 .- alt, az, freq, delays=beam.delays, jones=true, interp=false)
-    # The output of mwa_pb is [n, 2, 2], where n is length(alt) = length(az)
-    # However, we want this in [4, n] format. Note also we swap the indices of the
-    # 2x2 matrices to account for the fact that Python is row major and Julia is column major.
-    jones = permutedims(jones, (3, 2, 1))
-    jones = reshape(jones, 4, size(jones, 3))
+const libbeam = string(@__DIR__, "/libbeam.so")
+
+function Beam(delays::Array{Int32, 1}, path::String)
+    amps = ones(16)
+    ptr = @threadcall((:beam_new, libbeam), Ptr{Cvoid}, (Ptr{Cdouble}, Ptr{Cdouble}, Cstring), convert(Array{Cdouble}, delays), amps, path)
+    beam = Beam(delays, path, ptr)
+    finalizer(del, beam)
+    return beam
+end
+
+function del(beam::Beam)
+    ccall((:beam_del, libbeam), Cvoid, (Ptr{Cvoid},), beam.ptr)
+end
+
+function beamjones(beam::Beam, freq::Float64, alts::Array{Float64, 1}, azs::Array{Float64, 1})
+    if length(alts) != length(azs)
+        throw(ArgumentError("alts and azs must be the same length"))
+    end
+    N = length(alts)
+
+    jones = Array{ComplexF64, 2}(undef, 4, N)
+    @threadcall((:beamjones, libbeam), Cvoid, (Ptr{Cvoid}, Cint, Csize_t, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{ComplexF64}), beam.ptr, round(Cint, freq), N, alts, azs, jones)
     return jones
+end
+
+function closest_freq(beam::Beam, freq::Float64)
+    closest = @threadcall((:find_closest_freq, libbeam), Cint, (Ptr{Cvoid}, Cint), beam.ptr, round(Cint, freq))
+    return convert(Float64, closest)
 end

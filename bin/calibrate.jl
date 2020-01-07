@@ -93,7 +93,7 @@ mset = MeasurementSet(args["mset"])
 
 # Load beam object if --apply-beam is set
 if args["apply-beam"] !== nothing && mset.mwadelays !== nothing
-    global beam = AOBeam(mset.mwadelays, args["apply-beam"])
+    global beam = Beam(mset.mwadelays, args["apply-beam"])
 elseif args["apply-beam"] !== nothing
     @error "Unable to load MWA tile delays from measurement set, which is required with --apply-beam"
     exit(1)

@@ -1,10 +1,7 @@
 module MWAjl
 
-include("aobeam.jl")
-export AOBeam, beamjones, closest_freq
-
 include("beam.jl")
-export Beam, beamjones
+export Beam, beamjones, closest_freq
 
 include("skymodel.jl")
 include("skymodel_parser.jl")
@@ -30,12 +27,5 @@ export consumer, producer
 
 include("utils.jl")
 export sanitize!
-
-const mwapb = PyNULL()
-function __init__()
-    # Python modules must be loaded as part of the module init, otherwise
-    # empty NULL pointers will be saved following module precompilation.
-    copy!(mwapb, pyimport("mwa_pb.primary_beam"))
-end
 
 end

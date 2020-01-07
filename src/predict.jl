@@ -8,7 +8,7 @@ function predict(
         times::Array{T, 1},
         freqs::Array{T, 1},
         comps::Array{Component, 1},
-        beam::Union{Beam, AOBeam, Nothing},
+        beam::Union{Beam, Nothing},
         pos0::Position;
         gpu::Bool = false,
     )::Union{Array{ComplexF32, 3}, CuArray{ComplexF32, 3}} where {T <: AbstractFloat}
