@@ -11,7 +11,7 @@ function predict(
         beam::Union{Beam, AOBeam, Nothing},
         pos0::Position;
         gpu::Bool = false,
-    ) where {T <: AbstractFloat}
+    )::Union{Array{ComplexF32, 3}, CuArray{ComplexF32, 3}} where {T <: AbstractFloat}
 
     lambdas = 299792458 ./ freqs
 
@@ -93,12 +93,12 @@ function predict(
     if gpu
         model_d = CuArrays.fill(ComplexF32(0), 4, length(lambdas), length(times))
         uvws_d, lambdas_d, timeidxs_d, lmns_d, fluxes_d = CuArray(convert(Array{Float32}, uvws)), CuArray(convert(Array{Float32}, lambdas)), CuArray(timeidxs), CuArray(convert(Array{Float32}, lmns)), CuArray(convert(Array{ComplexF32}, fluxes))
-        elapsed = Base.@elapsed CuArrays.@sync begin
+        elapsed = Base.@elapsed begin
             @cuda blocks=256 threads=256 shmem=sizeof(Float32)*length(lmns) + sizeof(Float32)*length(lambdas) predictionloop!(model_d, uvws_d, lambdas_d, timeidxs_d, lmns_d, fluxes_d)
         end
-        @debug "Predicted model (GPU) elapsed $elapsed"
+        @debug "Sending model prediction to GPU elapsed $elapsed"
 
-        return Array(model_d)
+        return model_d
     else
         model = zeros(ComplexF32, 4, length(lambdas), length(times))
         elapsed = Base.@elapsed predictionloop!(model, uvws, lambdas, timeidxs, lmns, fluxes)

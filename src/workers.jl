@@ -80,6 +80,13 @@ function producer(ch, mset, comps, beam, args)
             end
             @debug "Finished fetching new batch of data, elapsed $elapsed"
 
+            # If GPU is enabled, we have to wait for the GPU calculation to complete
+            # and for the array to be transferred back from the GPU to the CPU.
+            if isa(model, CuArray)
+                elapsed = Base.@elapsed model = Array(model)
+                @debug "Additional time waiting for model, elapsed $elapsed"
+            end
+
             # Flag and sanitize data (eg. set NaN or Inf to 0)
             elapsed = Base.@elapsed sanitize!(data, model, flag)
             flag = nothing  # Allow GC of flag
