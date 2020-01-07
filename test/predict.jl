@@ -64,7 +64,7 @@ end
 
 @testset "GPU Prediction" begin
     nrows = 500_000
-    nchans = 100
+    nchans = 4
 
     uvws = rand(3, nrows)
     times = sort(rand(1.0:10.0, nrows))
