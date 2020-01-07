@@ -25,6 +25,9 @@ export calibrate!, calibrationloop
 include("matrix2x2.jl")
 export Matrix2x2toArray4, Array4toMatrix2x2, AxB!, AxBH!, AHxB!, plusAxB!, plusAxBH!, plusAHxB!, AdivB!, invA!
 
+include("workers.jl")
+export consumer, producer
+
 include("utils.jl")
 export sanitize!
 
