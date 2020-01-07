@@ -89,68 +89,40 @@ else
     @info "Sky model mode with $(length(comps)) components"
 end
 
-# Lets get the metadata about this measurement set
-@info "Measurement set: $(args["mset"])"
+# Open the measurement set and load required metadata
+mset = MeasurementSet(args["mset"])
 
-# Frequency
-spw = Table(args["mset"] * "/SPECTRAL_WINDOW")
-freqs = column(spw, "CHAN_FREQ")
-spw = nothing
-if size(freqs, 2) > 1
-    println("Fatal: There is more than one spectral window present in the measurement set. We only know how to handle one.")
+# Load beam object if --apply-beam is set
+if args["apply-beam"] !== nothing && mset.mwadelays !== nothing
+    global beam = AOBeam(mset.mwadelays, args["apply-beam"])
+elseif args["apply-beam"] !== nothing
+    @error "Unable to load MWA tile delays from measurement set, which is required with --apply-beam"
     exit(1)
-end
-freqs = freqs[:, 1]
-lambdas = 299792458 ./ freqs
-nchans = length(freqs)
-@info " Total channels: $nchans"
-
-# Timesteps
-mset = Table(args["mset"])
-timesteps = sort(unique(column(mset, "TIME")))
-ntimesteps = length(timesteps)
-@info " Total timesteps: $ntimesteps"
-
-# Antennas
-antennas = Table(args["mset"] * "/ANTENNA")
-nants = size(column(antennas, "POSITION"), 2)
-antennas = nothing
-@info " Number of antennas: $nants"
-
-# Phase center
-pos0 = Position(
-    column(Table(args["mset"] * "/FIELD"), "PHASE_DIR")[:, 1]...
-)
-@info " Phase center RA = $(rad2deg(pos0.ra)) Dec = $(rad2deg(pos0.dec))"
-
-# Get beam delays
-if args["apply-beam"] !== nothing
-    global delays = column(Table(args["mset"] * "/MWA_TILE_POINTING"), "DELAYS")[:, 1]
-    @info " MWA tile delays: $delays"
-    global beam = AOBeam(delays, args["apply-beam"])
 else
     global beam = nothing
 end
 
+# Set default channel width if --chanwidth==0
 if args["chanwidth"] < 1
-    args["chanwidth"] = length(freqs)
+    args["chanwidth"] = mset.nchans
 end
-if length(freqs) % args["chanwidth"] != 0
+if mset.nchans % args["chanwidth"] != 0
     @warn "--chanwidth does not evenly divide the total number of channels"
 end
 
+# Set default time width if --timewidth==0
 if args["timewidth"] < 1
-    args["timewidth"] = length(timesteps)
+    args["timewidth"] = mset.ntimesteps
 end
-if length(timesteps) % args["timewidth"] != 0
+if mset.ntimesteps % args["timewidth"] != 0
     @warn "--timewidth does not evenly divide the total number of time steps"
 end
 
 # Initialize final Jones matrix to Identity
 # [pol, pol, antid, channels, timesteps]
-timeblocks = cld(ntimesteps, args["timewidth"])
-chanblocks = cld(nchans, args["chanwidth"])
-jones = zeros(Complex{Float64}, 4, nants, chanblocks, timeblocks)
+timeblocks = cld(mset.ntimesteps, args["timewidth"])
+chanblocks = cld(mset.nchans, args["chanwidth"])
+jones = zeros(Complex{Float64}, 4, mset.nants, chanblocks, timeblocks)
 jones[1, :, :, :] .= 1
 jones[4, :, :, :] .= 1
 converged = zeros(Bool, chanblocks, timeblocks)
@@ -207,16 +179,16 @@ end
 
 for timeblock in 1:timeblocks
     t1 = (timeblock - 1) * args["timewidth"] + 1
-    t2 = min(ntimesteps, timeblock * args["timewidth"])
+    t2 = min(mset.ntimesteps, timeblock * args["timewidth"])
     submset = taql("
         select * from \$1 where
         ANTENNA1 <> ANTENNA2
         and not FLAG_ROW
         and SUM(SUMSQR(UVW)) > $(args["minuv"])
         and SUM(SUMSQR(UVW)) < $(args["maxuv"])
-        and TIME >= $(timesteps[t1])
-        and TIME <= $(timesteps[t2])
-    ", mset)
+        and TIME >= $(mset.unique_timesteps[t1])
+        and TIME <= $(mset.unique_timesteps[t2])
+    ", mset.table)
 
     # Load antenna IDs
     # Add one to satisfy one-indexed convention
@@ -232,8 +204,8 @@ for timeblock in 1:timeblocks
 
     chanblock = 1
     batchsize = args["chanwidth"] * args["nbatch"]
-    for batchstart in 1:batchsize:nchans
-        batchend = min(nchans, batchstart + batchsize - 1)
+    for batchstart in 1:batchsize:mset.nchans
+        batchend = min(mset.nchans, batchstart + batchsize - 1)
 
         # Fetch calibration data
         @debug "Fetching new batch of data"
@@ -241,7 +213,7 @@ for timeblock in 1:timeblocks
             if selfcal
                 model = column(submset, args["modelcolumn"], blc=[1, batchstart], trc=[4, batchend])
             else
-                model = predict(uvws, times, lambdas[batchstart:batchend], comps, beam, pos0, gpu=args["gpu"])
+                model = predict(uvws, times, mset.freqs[batchstart:batchend], comps, beam, mset.phasecenter, gpu=args["gpu"])
             end
             data = column(submset, args["datacolumn"], blc=[1, batchstart], trc=[4, batchend])
             flag = column(submset, "FLAG", blc=[1, batchstart], trc=[4, batchend])
@@ -259,7 +231,7 @@ for timeblock in 1:timeblocks
 
         # Send data to workers
         for chstart in 1:args["chanwidth"]:(batchend - batchstart + 1)
-            chend = min(nchans, chstart + args["chanwidth"] - 1)
+            chend = min(mset.nchans, chstart + args["chanwidth"] - 1)
             put!(ch, (
                 data[:, chstart:chend, :],
                 model[:, chstart:chend, :],

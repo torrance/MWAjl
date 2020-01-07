@@ -20,7 +20,7 @@ global_logger(Logging.ConsoleLogger(stderr, Logging.Debug))
         "point",
         MWAjl.SED(154E6, [1, 0, 0, 0], [0]),
     )]
-    model = predict(uvws, times, lambdas, comps, nothing, pos0)
+    model = predict(uvws, times, freqs, comps, nothing, pos0)
     @test all(model[[true, false, false, true], :, :] .≈ 1)
     @test all(model[[false, true, true, false], :, :] .≈ 0)
 
@@ -30,7 +30,7 @@ global_logger(Logging.ConsoleLogger(stderr, Logging.Debug))
         "point",
         MWAjl.SED(154E6, [1, 0, 0, 0], [0]),
     )]
-    model = predict(uvws, times, lambdas, comps, nothing, pos0)
+    model = predict(uvws, times, freqs, comps, nothing, pos0)
 
     @test all(model[[false, true, true, false], :, :] .≈ 0)
     u, v, w = uvws[:, 1] ./ lambdas[1]
@@ -50,7 +50,7 @@ global_logger(Logging.ConsoleLogger(stderr, Logging.Debug))
             MWAjl.SED(154E6, [1, 0, 0, 0], [0]),
         ),
     ]
-    model = predict(uvws, times, lambdas, comps, nothing, pos0)
+    model = predict(uvws, times, freqs, comps, nothing, pos0)
 
     @test all(model[[false, true, true, false], :, :] .≈ 0)
     vis = 0
@@ -80,8 +80,8 @@ end
         end
     end
 
-    gpumodel = predict(uvws, times, lambdas, comps, nothing, pos0, gpu=true)
-    cpumodel = predict(uvws, times, lambdas, comps, nothing, pos0)
+    gpumodel = predict(uvws, times, freqs, comps, nothing, pos0, gpu=true)
+    cpumodel = predict(uvws, times, freqs, comps, nothing, pos0)
 
     @test all(cpumodel .≈ gpumodel)
 end

@@ -6,14 +6,14 @@ using StaticArrays
 function predict(
         uvws::Array{T, 2},
         times::Array{T, 1},
-        lambdas::Array{T, 1},
+        freqs::Array{T, 1},
         comps::Array{Component, 1},
         beam::Union{Beam, AOBeam, Nothing},
         pos0::Position;
         gpu::Bool = false,
     ) where {T <: AbstractFloat}
 
-    freqs = 299792458 ./ lambdas
+    lambdas = 299792458 ./ freqs
 
     # Construct an time index into each row
     elapsed = Base.@elapsed begin
