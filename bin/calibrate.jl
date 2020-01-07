@@ -127,12 +127,6 @@ jones[4, :, :, :] .= 1
 converged = zeros(Bool, chanblocks, timeblocks)
 @debug "Created Jones array: $(size(jones))"
 
-# Precompile calibrate! whilst we read from disk
-Threads.@spawn let datamodel = zeros(ComplexF32, 4, 4, 1), weights = zeros(Float32, 4, 4, 1), ants = Int32[1]
-    elapsed = Base.@elapsed calibrate!(jones[:, :,  1, 1], datamodel, datamodel, weights, ants, ants, args["max-iterations"], args["tolerance"]...)
-    @debug "calibrate! precompilation elapsed $elapsed"
-end
-
 # Initialise channel for sending work from the producer to consumers.
 # The producer is responsible for loading data from disk (or predicting it) and
 # distributing the chunks via the channel to the consumers, who do the actual calibration.
