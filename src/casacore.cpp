@@ -22,13 +22,15 @@ enum errors {
 template <typename T>
 T* getColumn(casacore::Table* tbl, char* name, int* ndim, size_t** shape, int sliceLength, size_t* blc, size_t* trc, int* const error) {
     try {
-        casacore::Array<T> array;
+        auto array = new casacore::Array<T>;
 
         auto table_desc = tbl->tableDesc();
         auto column_desc = table_desc.columnDesc(name);
         if (column_desc.isScalar()) {
             casacore::ScalarColumn<T> column(*tbl, name);
-            array = column.getColumn();
+            auto vector = new casacore::Vector<T>;
+            column.getColumn(*vector);
+            array = vector;
         }
         else {
             casacore::ArrayColumn<T> column(*tbl, name);
@@ -41,31 +43,28 @@ T* getColumn(casacore::Table* tbl, char* name, int* ndim, size_t** shape, int sl
                     end[i] = trc[i];
                 }
                 casacore::Slicer slice(start, end, casacore::Slicer::LengthOrLast::endIsLast);
-                array = column.getColumn(slice);
+                column.getColumn(slice, *array);
             }
             else {
-                array = column.getColumn();
+                column.getColumn(*array);
             }
         }
 
         // Populate shape
-        *ndim = array.ndim();
+        *ndim = array->ndim();
         *shape = (size_t*) malloc(*ndim * sizeof(size_t));
-        memcpy(*shape, array.shape().storage(), *ndim * sizeof(size_t));
+        memcpy(*shape, array->shape().storage(), *ndim * sizeof(size_t));
 
         // Get raw storage data
         casacore::Bool deleteIt;
-        T* data = array.getStorage(deleteIt);
-        size_t nelements = array.nelements();
-        // Unless deleteIt is true, we need to copy the data
+        T* data = array->getStorage(deleteIt);
+        size_t nelements = array->nelements();
+        // If deleteIt is true, then we have a copy of the data
+        // and should free array. Otherwise we
         if (deleteIt) {
-            return data;
+            delete array;
         }
-        else {
-            T* mydata = (T*) malloc(nelements * sizeof(T));
-            memcpy(mydata, data, nelements * sizeof(T));
-            return mydata;
-        }
+        return data;
     }
     catch (casacore::ArraySlicerError e) {
         *error = ArraySlicerError;
