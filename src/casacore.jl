@@ -1,8 +1,7 @@
 mutable struct Table
     ptr::Ptr{Cvoid}
-    lock::ReentrantLock
     function Table(ptr::Ptr{Cvoid})
-        tbl = new(ptr, ReentrantLock())
+        tbl = new(ptr)
         finalizer(close, tbl)
         return tbl
     end
@@ -42,7 +41,7 @@ const libcasacore = string(@__DIR__, "/libcasacorejl.so")
 
 function Table(path::String)::Table
     err = Ref{Cint}(0)
-    ptr = @threadcall((:table_open, libcasacore), Ptr{Cvoid}, (Cstring, Ptr{Cint}), path, err)
+    ptr = ccall((:table_open, libcasacore), Ptr{Cvoid}, (Cstring, Ptr{Cint}), path, err)
     if CasaError(err[]) == TableNoFile
         throw(ArgumentError("Could not open table: $path"))
     end
@@ -51,33 +50,25 @@ function Table(path::String)::Table
 end
 
 function close(tbl::Table)
-    lock(tbl.lock)
-    # This cannot be a @threadcall, as no task switch is allowed during finalizers.
+    # This cannot be a ccall, as no task switch is allowed during finalizers.
     # Otherwise, this results in difficult to diagnose concurrency violation errors.
     ccall((:table_close, libcasacore), Cvoid, (Ptr{Cvoid},), tbl.ptr)
-    unlock(tbl.lock)
 end
 
 function taql(query::String, tbl::Table)
-    lock(tbl.lock)
-    ptr = @threadcall((:taql, libcasacore), Ptr{Cvoid}, (Ptr{Cvoid}, Cstring), tbl.ptr, query)
-    unlock(tbl.lock)
-    # TODO: Handle errors 
+    ptr = ccall((:taql, libcasacore), Ptr{Cvoid}, (Ptr{Cvoid}, Cstring), tbl.ptr, query)
+    # TODO: Handle errors
     return Table(ptr)
 end
 
 function column_info(tbl::Table, colname::String)
-    lock(tbl.lock)
-    exists = @threadcall((:column_exists, libcasacore), Bool, (Ptr{Cvoid}, Cstring), tbl.ptr, colname)
-    unlock(tbl.lock)
+    exists = ccall((:column_exists, libcasacore), Bool, (Ptr{Cvoid}, Cstring), tbl.ptr, colname)
     if !exists
         throw(ArgumentError(string("Column ", colname, " does not exist")))
     end
 
     ndim, typeid = Ref{Cint}(0), Ref{Cint}(0)
-    lock(tbl.lock)
-    shape_ptr = @threadcall((:column_info, libcasacore), Ptr{Csize_t}, (Ptr{Cvoid}, Cstring, Ptr{Cint}, Ptr{Cint}), tbl.ptr, colname, typeid, ndim)
-    unlock(tbl.lock)
+    shape_ptr = ccall((:column_info, libcasacore), Ptr{Csize_t}, (Ptr{Cvoid}, Cstring, Ptr{Cint}, Ptr{Cint}), tbl.ptr, colname, typeid, ndim)
     shape = Tuple(convert(Vector{Int}, unsafe_wrap(Vector{Csize_t}, shape_ptr, ndim[], own=true)))
     return enum2type[TypeEnum(typeid[])], shape
 end
@@ -104,14 +95,12 @@ for T in (Bool, Int32, Float32, Float64, Complex{Float32})
     cname = String(Symbol(:get_column_, type2str[T]))
     @eval function column(tbl::Table, colname::String, blc::Vector{Int}, trc::Vector{Int}, ::Type{$T})::Array{$T}
         ndim, shape_ptr, err = Ref{Cint}(0), Ref{Ptr{Csize_t}}(0), Ref{Int}(0)
-        lock(tbl.lock)
-        data_ptr = @threadcall(
+        data_ptr = ccall(
             ($cname, libcasacore),
             Ptr{$T},
             (Ptr{Cvoid}, Cstring, Ptr{Cint}, Ptr{Ptr{Csize_t}}, Cint, Ptr{Csize_t}, Ptr{Csize_t},Ptr{Int}),
             tbl.ptr, colname, ndim, shape_ptr, length(blc), blc, trc, err
         )
-        unlock(tbl.lock)
         if CasaError(err[]) == ArraySlicerError
             _, shape = column_info(tbl, colname)
             throw(ArgumentError(string("Slices (", blc, " and  ", trc, ") are invalid for column shape ", shape)))
@@ -124,7 +113,7 @@ for T in (Bool, Int32, Float32, Float64, Complex{Float32})
 end
 
 function Frame(mjd::Float64, lon::Float64, lat::Float64)
-    ptr = @threadcall((:frame_new, libcasacore), Ptr{Cvoid}, (Cdouble, Cdouble, Cdouble), mjd, lon, lat)
+    ptr = ccall((:frame_new, libcasacore), Ptr{Cvoid}, (Cdouble, Cdouble, Cdouble), mjd, lon, lat)
     return Frame(ptr)
 end
 
@@ -135,6 +124,6 @@ end
 function radec2altaz(pos::Position, frame::Frame)
     alt = Ref{Cdouble}(0)
     az = Ref{Cdouble}(0)
-    @threadcall((:radec_to_altaz, libcasacore), Cvoid, (Cdouble, Cdouble, Ptr{Cvoid}, Ptr{Cdouble}, Ptr{Cdouble}), pos.ra, pos.dec, frame.ptr, alt, az)
+    ccall((:radec_to_altaz, libcasacore), Cvoid, (Cdouble, Cdouble, Ptr{Cvoid}, Ptr{Cdouble}, Ptr{Cdouble}), pos.ra, pos.dec, frame.ptr, alt, az)
     return alt[], az[]
 end

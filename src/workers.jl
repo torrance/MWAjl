@@ -72,7 +72,7 @@ function producer(ch, mset, comps, beam, args)
                 if args["model"] === nothing
                     model = column(submset, args["modelcolumn"], blc=[1, batchstart], trc=[4, batchend])
                 else
-                    model = predict(uvws, times, mset.freqs[batchstart:batchend], comps, beam, mset.phasecenter, gpu=args["gpu"])
+                    model = Threads.@spawn predict(uvws, times, mset.freqs[batchstart:batchend], comps, beam, mset.phasecenter, gpu=args["gpu"])
                 end
                 data = column(submset, args["datacolumn"], blc=[1, batchstart], trc=[4, batchend])
                 flag = column(submset, "FLAG", blc=[1, batchstart], trc=[4, batchend])
@@ -82,8 +82,8 @@ function producer(ch, mset, comps, beam, args)
 
             # If GPU is enabled, we have to wait for the GPU calculation to complete
             # and for the array to be transferred back from the GPU to the CPU.
-            if isa(model, CuArray)
-                elapsed = Base.@elapsed model = Array(model)
+            if args["model"] !== nothing
+                elapsed = Base.@elapsed model = fetch(model)
                 @debug "Additional time waiting for model, elapsed $elapsed"
             end
 
