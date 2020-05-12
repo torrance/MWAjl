@@ -1,0 +1,4 @@
+*.so
+*.vscode
+*.code-workspace
+docs/build
