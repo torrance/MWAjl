@@ -4,19 +4,29 @@ A sky model consists of one of more named sources. Each source consists of one o
 
 This page describes the format used in sky model files, passed to calibrate using the `--model` parameter. This page also describes how some of these sky model parameters are interpreted and processed.
 
+```@contents
+Pages = ["skymodel.md"]
+Depth = 5
+```
+
 ## skymodel fileformat 1.1
 
 ### Syntax
 
 Keywords and tokens are required to be separated by white space (one more or of spaces, tabs, new lines), with the exception of braces (`{` or `}`) which are understood as complete keywords.
 
-Single quotes (`'`) or double quotes (`"`) can be used around a strings containing white space, for example in source names like `"Crab Nebula"` or `'Fornax A'`, so long as the opening and closing quote match. There are no escape characters for within quoted strings.
+Single quotes (`'`) or double quotes (`"`) can be used around a strings containing white space, for example in source names like `"Crab Nebula"` or `'Fornax A'`, so long as the opening and closing quotes match. There are no escape characters for within quoted strings.
 
 The format is otherwise not white-space sensitive: new lines, spaces and tabs can be used to format the file as desired.
 
 Comments are indicated by a `#` symbol and will exclude all proceeding text until the next new line from further processing.
 
-The function `gettoken()` can be referenced for further clarity about token parsing.
+!!! note
+    The function `gettoken()` can be referenced for further clarity about token parsing.
+
+```@docs
+gettoken
+```
 
 ### Format
 
@@ -59,11 +69,15 @@ A **measurement** is of the format:
       fluxdensity Jy 100 2 2 0
     }
 
-The `frequency` field describes the frequency at which the meausurement was taken. The unit `MHz` must be appended, the this is the only unit currently accepted. Other units like `GHz` will throw an error.
+The `frequency` field describes the frequency at which the meausurement was taken. The unit `MHz` must be appended, and this is the only unit currently accepted. Other units like `GHz` will throw an error.
 
-`fluxdensity` describes the measured flux of the component at the specified frequency in units of Jansky in Stokes I, Q, U, V, respectively. The unit `Jy` must be provided, and is the only unit currently accepted. Note that the flux density is the total/integrated flux of the source.
+`fluxdensity` describes the measured flux of the component at the specified frequency in units of Jansky in Stokes I, Q, U, V, respectively. The unit `Jy` must be provided, and is the only unit currently accepted.
 
-There are a [set of rules](#measurement-interpolation-rules) for how flux density is interpolated in frequency.
+!!! note
+    The flux density is the total/integrated flux of the source [Jy], not the peak flux [Jy / beam]. For point sources these values are identical, but for Gaussian sources they are not.
+
+!!! note
+    [See below](#measurement-interpolation-rules) for the rules for how flux density is interpolated in frequency when using measurements.
 
 An **SED** is an alternative to providing one more more measurements. It allows for complete control over how the spectrum is interpolated in frequency by specifying arbitrary Taylor terms describing the curve:
 
@@ -85,7 +99,8 @@ The `fluxdensity` specifies the flux density ``S_0`` measured at the reference f
 
 The spectral index describes the Taylor terms of the curve in log/log space, i.e. ``\alpha``, ``\beta``, etc. At least one Taylor term must be provided, however there is no limit to the number of coefficients that are accepted.
 
-The curve applies to all of the Stokes parameters, and there is not currently any way to specify unique curves for each.
+!!! note
+    The SED curve applies to all of the Stokes parameters, and there is not currently any way to specify unique curves for each.
 
 ## Example skymodels
 
@@ -157,15 +172,10 @@ The curve applies to all of the Stokes parameters, and there is not currently an
 
 ## Measurement interpolation rules
 
-When specifying a component spectrum using measurements, it is usually necessary for calibrate to interpolate in frequency between the specified measurements. These rules follow exactly the rules used by the original claibrate, as well as handling all edge cases. For strict control over interpolation, it is recommended to instead provide an SED.
+When specifying a component spectrum using measurements, it is usually necessary for calibrate to interpolate in frequency between the specified measurements. These rules follow exactly the rules used by the original claibrate, as well as handling all edge cases.
 
-The rules for how this is done are as below:
+The rules for how this works are best described by the documentation of the implementing function:
 
-1. If a single measurement is provided:
-    - the spectrum is assumed flat
-2. Otherwise, if the interpolated frequency lies between two measurements:
-    - if both measurements are (strictly) positive, the flux density is linearly interpolated in ``\log(\nu) / \log(S)`` space
-    - if one or both are not strictly positive, the flux density is linearly interpolated in ``\nu / S`` space
-3. Otherwise, if the interpolated frequency is not between any two measurements:
-    - the flux density is linearly interpolated in ``\log(\nu) / \log(S)`` space using all (strictly positive) measurements
-    - if there are no measurements that are strictly positive, then the flux density is set to 0
+```@docs
+stokes
+```
