@@ -314,7 +314,21 @@ function dms2rad(dms::String)::Number
     end
 end
 
+"""
+    gettoken(f::IOStream)::String
 
+Parses the head of `f::IOSteam` and stops when a complete token has been parsed,
+which is returned. All tokens are lowercased on return.
+
+This function has the side effect of advancing the position of the IOStream.
+
+Tokens are defined as any whitespace (spaces, tabs, newlines, etc.) delimited text
+with two exceptions: both `{` and `}` are considered complete tokens and do not necessarily
+require surrounding white space; and any token begining with a quote (either `'` or `''`)
+will only conclude upon reaching a matching quote character (which will be stripped from the token).
+There are no escape characters. Comments are indicated by a `#` symbol and will exclude all
+text to the right until the next new line.
+"""
 function gettoken(f::IOStream)::String
     str = ""
     skipchars(isspace, f, linecomment='#')
