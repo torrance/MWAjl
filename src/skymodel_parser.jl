@@ -347,10 +347,14 @@ function gettoken(f::IOStream)::String
         # have a partial token, these indicate the end of this token. Otherwise,
         # just return the brace.
         elseif length(str) > 0 && (char == '{' || char == '}')
-            skip(str, -1)  # Rewind the buffer
+            skip(f, -1)  # Rewind the buffer
             break
         elseif char == '{' || char == '}'
             str = string(char)
+            break
+        # A hash indicates the end of a token and start of a comment
+        elseif char == '#'
+            skip(f, -1)  # Rewind the buffer for skipchars() to work correctly next time
             break
         # Otherwise, a space indicates the end of a token
         elseif isspace(char)
