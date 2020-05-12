@@ -95,14 +95,31 @@ function stokes(sed::SED, ν::Float64)::Array{Float64}
 end
 
 
-function stokes(ms::Measurements, ν::Float64)::Array{Float64}
-    # We interpolate in three ways
-    # 1. If just one measurement is provide, we assume 0 spectral index (ie. constant)
-    # 2. If freq lies between two measured values, we linearly interpolate (in log space)
-    #    between these values. EXCEPT if either of the two neighbour values is <= 0, then we
-    #    linearly interpolate in linear space.
-    # 3. Otherwise, we calculate spectral index using all measured values.
+"""
+    stokes(ms::Measurements, ν::Float64)
 
+Given a Measurements object (containing one more more Measurement objects),
+interpolate each of Stokes I, Q, U, V to the frequency ν.
+
+This function has been implemented to identically match the behaviour of the original `calibrate`.
+
+We interpolate in three ways:
+
+1. If just one measurement is provide, we assume a flat spectral index (i.e. constant).
+2. If the frequency ν lies between two measured values, we linearly interpolate (in log/log space)
+   between these values. EXCEPT if either of the two neighbour values is <= 0, then we
+   linearly interpolate in linear space between the two neighbouring measurements.
+3. Otherwise, we linearly interpolate in log/log space based on a least squares fit to _all_
+    strictly positive measurements. If none are strictly positive, we return 0. If just one is strictly positive, the spectrum is assumed flat.
+
+!!! warning
+    There are plenty of pathological combinations of measurement values that will give unexpected results. For example, given measurements 100 MHz => 1 Jy and 200 MHz => 0 Jy, then requesting the flux density at 300 MHz will give 1 Jy.
+
+    To avoid such unexpected results, ensure all measurements are strictly positive (i.e. > 0).
+
+    Or for complete control over interpolation, it is recommended to instead provide an SED.
+"""
+function stokes(ms::Measurements, ν::Float64)::Array{Float64}
     stokes = zeros(4)  # [I Q U V]
 
     # Case 1
@@ -116,12 +133,9 @@ function stokes(ms::Measurements, ν::Float64)::Array{Float64}
             # We've found a pair of measurements adjacent to our requested frequency.
             # Loop over stokes parameters
             for j in 1:4
-                # If both measurements are 0, we set to 0
-                if ms[i].stokes[j] ≤ 0 && ms[i + 1].stokes[j] ≤ 0
-                    stokes[j] = 0
-                # If one of the measurements is 0, then log space interpolation will fail
+                # If one of the measurements is <= 0, then log space interpolation will fail
                 # so we fallback to linear space interpolation
-                elseif ms[i].stokes[j] ≤ 0 || ms[i + 1].stokes[j] ≤ 0
+                if ms[i].stokes[j] ≤ 0 || ms[i + 1].stokes[j] ≤ 0
                     c, m = polyfit([ms[i].ν, ms[i + 1].ν], [ms[i].stokes[j], ms[i + 1].stokes[j]], 1)
                     stokes[j] = c + m * ν
                 # Interpolate in log space
@@ -149,6 +163,8 @@ function stokes(ms::Measurements, ν::Float64)::Array{Float64}
         # Handle case if all measurements are zero
         if length(logSs) == 0
             stokes[i] = 0
+        elseif length(logSs) == 1
+            stokes[i] = exp(logSs[1])
         else
             c, α = polyfit(logνs, logSs, 1)
             stokes[i] = ℯ^(c + α * log(ν))
