@@ -13,7 +13,7 @@ function parse_model(f::IOStream)::Array{Source}
             error("Expected source definition, got: $(token)")
         end
     end
-   
+
     sources
 end
 
@@ -69,7 +69,7 @@ function parse_component(f::IOStream)::Component
     if token != "{"
         error("Expected {, got $(token)")
     end
-    
+
     local position::Position
     local type::String
     local sed::SED
@@ -158,7 +158,7 @@ function parse_measurement(f::IOStream)::Measurement
             error("Expected measurement definition, got $(token)")
         end
     end
-    
+
     try
         return Measurement(frequency, [I, Q, U, V])
     catch e
@@ -226,7 +226,7 @@ function parse_sed(f::IOStream)::SED
         end
     end
 end
-        
+
 
 function parse_spectral_index(f::IOStream)::Array{Float64}
     token = gettoken(f)
@@ -264,7 +264,7 @@ function hms2rad(hms::String)::Number
         hours, ms = split(hms, 'h', limit=2)
         minutes, s = split(ms, 'm', limit=2)
         seconds, rest = split(s, 's', limit=2)
-        
+
         if rest != ""
             error("rest is not empty")
         end
@@ -292,7 +292,7 @@ function dms2rad(dms::String)::Number
         degrees, ms = split(dms, 'd', limit=2)
         minutes, s = split(ms, 'm', limit=2)
         seconds, rest = split(s, 's', limit=2)
-        
+
         if rest != ""
             error("rest is not empty")
         end
