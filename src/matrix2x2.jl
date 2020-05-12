@@ -1,7 +1,9 @@
-# These helper functions (used in tests) help us move from the (4, ...) format used in
-# measurement sets and expected in calibrate!, to Julia's innate 2x2 matrices (so that we
-# can use standard linear algebra functions). This pays special attention to the column major
-# ordering used in julia, versus the row major ordering used in casacore.
+"""
+    Matrix2x2toArray(arr)
+
+Convert Julia's 2x2 matrix to C-ordered 4-array, paying special attention to column major
+ordering of Julia versus row major ordered of C. Only used in tests.
+"""
 function Matrix2x2toArray4(arr::Array{T, N}) where {T, N}
     s = size(arr)
     if N < 2 || s[1] != 2 || s[2] != 2
@@ -20,6 +22,12 @@ function Matrix2x2toArray4(arr::Array{T, N}) where {T, N}
     end
 end
 
+"""
+    Array4toMatrix2x2(arr)
+
+Convert C-ordered 4-array to Julia's 2x2 matrix, paying special attention to column major
+ordering of Julia versus row major ordered of C. Only used in tests.
+"""
 function Array4toMatrix2x2(arr::Array{T, N}) where {T, N}
     s = size(arr)
     if N < 1 || s[1] != 4
