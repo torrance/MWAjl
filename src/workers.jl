@@ -82,10 +82,10 @@ function producer(ch, mset, comps, beam, args)
             end
             @debug "Finished fetching new batch of data, elapsed $elapsed"
 
-            # If GPU is enabled, we have to wait for the GPU calculation to complete
-            # and for the array to be transferred back from the GPU to the CPU.
+            # Model is built asynchronously, either by CPU threads or GPU
+            # Wait for it to finish.
             if args["model"] !== nothing
-                elapsed = Base.@elapsed model = fetch(model)
+                elapsed = Base.@elapsed model = Array(fetch(model))
                 @debug "Additional time waiting for model, elapsed $elapsed"
             end
 
