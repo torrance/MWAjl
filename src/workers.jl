@@ -54,6 +54,8 @@ function producer(ch, mset, comps, beam, args)
         ants1 = column(submset, "ANTENNA1") .+ 1
         ants2 = column(submset, "ANTENNA2") .+ 1
 
+        @info "$(length(ants1)) rows"
+
         # Additional columns needed for prediction
         local uvws, times
         if args["model"] !== nothing
