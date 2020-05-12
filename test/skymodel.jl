@@ -29,12 +29,21 @@ end
             MWAjl.Measurement(300E6, Float64[0, 0, 0, 0]),
         ])
         @test MWAjl.stokes(ms, 300E6) ≈ Float64[0, 0, 0, 0]
+        @test MWAjl.stokes(ms, 400E6) ≈ Float64[1, 0, 0, 0]
 
         # Edge case: just one measurement
         ms = MWAjl.Measurements(MWAjl.Measurement[
             MWAjl.Measurement(100E6, Float64[1, 0, 0, 0]),
         ])
         @test MWAjl.stokes(ms, 300E6) ≈ Float64[1, 0, 0, 0]
+
+        # Edge case: just one measurement, and it's negative!
+        ms = MWAjl.Measurements(MWAjl.Measurement[
+            MWAjl.Measurement(100E6, Float64[-1, 0, 0, 0]),
+        ])
+        @test MWAjl.stokes(ms, 100E6) ≈ Float64[-1, 0, 0, 0]
+        @test MWAjl.stokes(ms, 200E6) ≈ Float64[-1, 0, 0, 0]
+
     end
 
     @testset "SED flux interpolation" begin

@@ -6,9 +6,9 @@ source {
     position 03h58m57.7099s +10d27m17.892s
     measurement {
       frequency 80 MHz
-      fluxdensity Jy 46.75907 0 0 0
+      fluxdensity Jy 46.75907 0 0 0#This is a comment
     }
-    measurement {
+    measurement{ # This line has no space between tokens
       frequency 100 MHz
       fluxdensity Jy 39.73867 0 0 0
     }
