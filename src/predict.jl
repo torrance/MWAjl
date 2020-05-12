@@ -86,8 +86,8 @@ function predict(
                     AxB!(fluxes[:, compidx, chan, timeidx], jones[:, compidx, timeidx], tmp)
                 end
             end
+            @debug "Calculated and applied beam corrections, elapsed $elapsed"
         end
-        @debug "Calculated and applied beam corrections, elapsed $elapsed"
     end
 
     if gpu
