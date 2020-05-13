@@ -83,10 +83,10 @@ function stokes(sed::SED, ν::Float64)::Array{Float64}
         end
 
         # Flux at new frequency is given by:
-        # logS = logS_0 + alpha * ( log nu - log nu_0) + beta * (log^2 nu - log^2 nu_0) ..
+        # logS = logS_0 + alpha * (log nu - log nu_0) + beta * (log nu - log nu_0)^2 ..
         logS = log(stoke)
         for (power, coeff) in enumerate(sed.coeffs)
-            logS += coeff * (log(ν)^power - log(sed.ν)^power)
+            logS += coeff * (log(ν) - log(sed.ν))^power
         end
         stokes[i] =  ℯ^logS
     end
