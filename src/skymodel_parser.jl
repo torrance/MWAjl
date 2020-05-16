@@ -73,6 +73,12 @@ function parse_component(f::IOStream)::Component
     local position::Position
     local type::String
     local sed::SED
+
+    # Provide default shape parameters
+    major = 0
+    minor = 0
+    pa = 0
+
     measurements = Measurement[]
     while true
         token = gettoken(f)
@@ -83,13 +89,17 @@ function parse_component(f::IOStream)::Component
         # TODO: Implement Gaussian type
         elseif token == "type"
             type = gettoken(f)
-            if type ∉ ["point"]
-                error("Expected component type 'point', got: $(type)")
+            if !(type in ["point", "gaussian"])
+                error("Unexpected component type: $type")
             end
         elseif token == "sed"
             sed = parse_sed(f)
         elseif token == "measurement"
             push!(measurements, parse_measurement(f))
+        elseif token == "shape"
+            major = deg2rad(parse(Float64, gettoken(f)) / 3600)
+            minor = deg2rad(parse(Float64, gettoken(f)) / 3600)
+            pa = deg2rad(parse(Float64, gettoken(f)))
         elseif token == "}"
             break
         elseif token == ""
@@ -100,11 +110,14 @@ function parse_component(f::IOStream)::Component
     end
 
     try
+        local spectrum
         if length(measurements) > 0
-            return Component(position, type, Measurements(measurements))
+            spectrum = Measurements(measurements)
         else
-            return Component(position, type, sed)
+            spectrum = sed
         end
+        # Point sources are just a special case of Gaussian
+        return Gaussian(position, spectrum, major, minor, pa)
     catch e
         if isa(e, UndefVarError)
             error("Incomplete component definition")

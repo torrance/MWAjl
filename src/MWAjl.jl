@@ -7,6 +7,9 @@ include("skymodel.jl")
 include("skymodel_parser.jl")
 export parse_model, gettoken, stokes, Source, Component, SED, Measurements, Position, lmn
 
+include("components/gaussian.jl")
+export Gaussian, predictgaussian!
+
 include("casacore.jl")
 export Table, CasaError, column, taql, Frame, radec2altaz
 

@@ -59,8 +59,8 @@ function producer(ch, mset, comps, beam, args)
         # Additional columns needed for prediction
         local uvws, times
         if args["model"] !== nothing
-            uvws = column(submset, "UVW")
-            times = column(submset, "TIME")
+            uvws = convert(Array{Float32}, column(submset, "UVW"))
+            times = convert(Array{Float32}, column(submset, "TIME"))
         end
 
         chanblock = 1
@@ -80,13 +80,13 @@ function producer(ch, mset, comps, beam, args)
                 flag = column(submset, "FLAG", blc=[1, batchstart], trc=[4, batchend])
                 weights = column(submset, "WEIGHT_SPECTRUM", blc=[1, batchstart], trc=[4, batchend])
             end
-            @debug "Finished fetching new batch of data, elapsed $elapsed"
+            @info "Finished fetching new batch of data, elapsed $elapsed"
 
             # Model is built asynchronously, either by CPU threads or GPU
             # Wait for it to finish.
             if args["model"] !== nothing
                 elapsed = Base.@elapsed model = Array(fetch(model))
-                @debug "Additional time waiting for model, elapsed $elapsed"
+                @info "Additional time waiting for model, elapsed $elapsed"
             end
 
             # Flag and sanitize data (eg. set NaN or Inf to 0)

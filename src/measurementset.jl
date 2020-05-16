@@ -5,7 +5,7 @@ struct MeasurementSet
     nchans::Int
     ntimesteps::Int
     unique_timesteps::Array{Float64, 1}
-    freqs::Array{Float64, 1}
+    freqs::Array{Float32, 1}
     phasecenter::Position
     mwadelays::Union{Array{Int32, 1}, Nothing}
 end

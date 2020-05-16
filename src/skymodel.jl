@@ -10,11 +10,7 @@ end
 
 abstract type Spectrum end
 
-struct Component
-    position::Position
-    type::String
-    spectrum::Spectrum
-end
+abstract type Component end
 
 struct Measurements <: Spectrum
     ms::Array{Measurement}
@@ -119,7 +115,7 @@ We interpolate in three ways:
 
     Or for complete control over interpolation, it is recommended to instead provide an SED.
 """
-function stokes(ms::Measurements, ν::Float64)::Array{Float64}
+function stokes(ms::Measurements, ν::AbstractFloat)::Array{AbstractFloat}
     stokes = zeros(4)  # [I Q U V]
 
     # Case 1
