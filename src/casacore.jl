@@ -1,3 +1,5 @@
+using Pkg.Artifacts
+
 mutable struct Table
     ptr::Ptr{Cvoid}
     function Table(ptr::Ptr{Cvoid})
@@ -37,7 +39,7 @@ const enum2type = Dict(TpBool    => Bool,             TpArrayBool    => Array{Bo
                        TpComplex => Complex{Float32}, TpArrayComplex => Array{Complex{Float32}},
                        TpString  => String,           TpArrayString  => Array{String})
 
-const libcasacore = string(@__DIR__, "/libcasacorejl.so")
+const libcasacore = joinpath(artifact"libcasacorejl.so", "libcasacorejl.so")
 
 function Table(path::String)::Table
     err = Ref{Cint}(0)

@@ -1,10 +1,12 @@
+using Pkg.Artifacts
+
 mutable struct Beam
     delays::Array{Int32, 1}
     path::String
     ptr::Ptr{Cvoid}
 end
 
-const libbeam = string(@__DIR__, "/libbeam.so")
+const libcasacore = joinpath(artifact"libbeam.so", "libbeam.so")
 
 function Beam(delays::Array{Int32, 1}, path::String)
     amps = ones(16)
