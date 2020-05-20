@@ -1,8 +1,11 @@
+using Pkg.Artifacts
 using Test
 using MWAjl
 
+testdata = artifact"testdata"
+
 @testset "SkyModelParser" begin
-    open(string(@__DIR__, "/data/model.txt")) do f
+    open(joinpath(testdata, "data/model.txt")) do f
         @test length(parse_model(f)) == 200
     end
 

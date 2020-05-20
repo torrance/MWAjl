@@ -2,16 +2,16 @@ using Pkg.Artifacts
 
 mutable struct Beam
     delays::Array{Int32, 1}
-    path::String
     ptr::Ptr{Cvoid}
 end
 
 const libbeam = joinpath(artifact"libbeam.so", "libbeam.so")
+const mwabeam = artifact"mwabeam"
 
-function Beam(delays::Array{Int32, 1}, path::String)
+function Beam(delays::Array{Int32, 1})
     amps = ones(16)
-    ptr = ccall((:beam_new, libbeam), Ptr{Cvoid}, (Ptr{Cdouble}, Ptr{Cdouble}, Cstring), convert(Array{Cdouble}, delays), amps, path)
-    beam = Beam(delays, path, ptr)
+    ptr = ccall((:beam_new, libbeam), Ptr{Cvoid}, (Ptr{Cdouble}, Ptr{Cdouble}, Cstring), convert(Array{Cdouble}, delays), amps, mwabeam)
+    beam = Beam(delays, ptr)
     finalizer(del, beam)
     return beam
 end

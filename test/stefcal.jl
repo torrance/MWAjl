@@ -1,7 +1,10 @@
 using MWAjl
 using NPZ
+using Pkg.Artifacts
 using Statistics: mean
 using Test
+
+testdata = artifact"testdata"
 
 @testset "Simple Calibration" begin
     nants = 128
@@ -69,16 +72,16 @@ using Test
 end
 
 @testset "Real data with partial skymodel" begin
-    ants1 = npzread(string(@__DIR__, "/data/1217094992/1217094992-ANTENNA1.npy")) .+ 1
-    ants2 = npzread(string(@__DIR__, "/data/1217094992/1217094992-ANTENNA2.npy")) .+ 1
+    ants1 = npzread(joinpath(testdata, "data/1217094992/1217094992-ANTENNA1.npy")) .+ 1
+    ants2 = npzread(joinpath(testdata, "data/1217094992/1217094992-ANTENNA2.npy")) .+ 1
     auto = ants1 .== ants2
 
     ants1 = ants1[.~auto]
     ants2 = ants2[.~auto]
-    data = permutedims(npzread(string(@__DIR__, "/data/1217094992/1217094992-DATA-ch2-3.npy"))[.~auto, :, :], [3, 2, 1])
-    model = permutedims(npzread(string(@__DIR__, "/data/1217094992/1217094992-MODEL_DATA-ch2-3.npy"))[.~auto, :, :], [3, 2, 1])
-    flag = permutedims(npzread(string(@__DIR__, "/data/1217094992/1217094992-FLAG-ch2-3.npy"))[.~auto, :, :], [3, 2, 1])
-    weights = permutedims(npzread(string(@__DIR__, "/data/1217094992/1217094992-WEIGHT_SPECTRUM-ch2-3.npy"))[.~auto, :, :], [3, 2, 1])
+    data = permutedims(npzread(joinpath(testdata, "data/1217094992/1217094992-DATA-ch2-3.npy"))[.~auto, :, :], [3, 2, 1])
+    model = permutedims(npzread(joinpath(testdata, "data/1217094992/1217094992-MODEL_DATA-ch2-3.npy"))[.~auto, :, :], [3, 2, 1])
+    flag = permutedims(npzread(joinpath(testdata, "data/1217094992/1217094992-FLAG-ch2-3.npy"))[.~auto, :, :], [3, 2, 1])
+    weights = permutedims(npzread(joinpath(testdata, "data/1217094992/1217094992-WEIGHT_SPECTRUM-ch2-3.npy"))[.~auto, :, :], [3, 2, 1])
 
     sanitize!(data, model, flag)
 

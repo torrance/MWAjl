@@ -17,3 +17,18 @@ os = "linux"
     [["libcasacorejl.so".download]]
     sha256 = "0915eff9659ba505f22310552480de4ead78239c5ab983f08c08416b6035d0cf"
     url = "https://github.com/torrance/MWAjl/raw/artifacts/x86_64/libcasacorejl.so.tar.gz"
+
+[mwabeam]
+git-tree-sha1 = "b89f6fc9b19d44aee1527698bd23c12485d1d24a"
+
+    [[mwabeam.download]]
+    sha256 = "c10da66e1884c20444d2ac28bac59653e10e1d31c864a9e0cce98ef2477aad19"
+    url = "https://github.com/torrance/MWAjl/releases/download/assets-v1/mwa_full_embedded_element_pattern.h5.tar.gz"
+
+[testdata]
+git-tree-sha1 = "6b03a7c28beac15dfb950ca934c69d65cf83e881"
+lazy = true
+
+    [[testdata.download]]
+    sha256 = "ab7e0776ff6f95c0ec2f24b4aeced7224b99aefbefe094200c903cc4ef49a8b2"
+    url = "https://github.com/torrance/MWAjl/releases/download/assets-v1/data.tar.gz"

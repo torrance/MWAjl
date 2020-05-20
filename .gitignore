@@ -2,3 +2,5 @@
 *.vscode
 *.code-workspace
 docs/build
+deps/build
+test/data
