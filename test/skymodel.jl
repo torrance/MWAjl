@@ -3,7 +3,7 @@ using MWAjl
 
 @testset "SkyModelParser" begin
     open(string(@__DIR__, "/data/model.txt")) do f
-        @test length(parse_model(f)) == 201
+        @test length(parse_model(f)) == 200
     end
 
     @test MWAjl.hms2rad("1h3m14.5s") ≈ 0.27594382694552017
