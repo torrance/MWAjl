@@ -6,7 +6,7 @@ mutable struct Beam
     ptr::Ptr{Cvoid}
 end
 
-const libcasacore = joinpath(artifact"libbeam.so", "libbeam.so")
+const libbeam = joinpath(artifact"libbeam.so", "libbeam.so")
 
 function Beam(delays::Array{Int32, 1}, path::String)
     amps = ones(16)
