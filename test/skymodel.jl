@@ -51,6 +51,6 @@ end
         @test MWAjl.stokes(sed, 180E6) ≈ [0.8555555555555556, 0, 0, 0]
 
         sed = MWAjl.SED(154E6, [1, 0, 0, 0], [-1, 0.001, 0.00003])
-        @test MWAjl.stokes(sed, 180E6) ≈ [0.8649650242737057, 0, 0, 0]
+        @test MWAjl.stokes(sed, 180E6) ≈ [0.855576475194691, 0, 0, 0]
     end
 end

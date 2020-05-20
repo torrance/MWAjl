@@ -8,27 +8,31 @@ global_logger(Logging.ConsoleLogger(stderr, Logging.Debug))
     nrows = 500_000
     nchans = 4
 
-    uvws = rand(3, nrows)
-    times = sort(rand(1.0:10.0, nrows))
-    freqs = collect(range(140E6, length=nchans, stop=160E6))
+    uvws = rand(Float32, 3, nrows)
+    times = convert(Array{Float32}, sort(rand(1.0:10.0, nrows)))
+    freqs = convert(Array{Float32}, collect(range(140E6, length=nchans, stop=160E6)))
     lambdas = 299792458 ./ freqs
     pos0 = Position(0, 0)
 
     # Single source at phase center
-    comps = Component[Component(
+    comps = Component[Gaussian(
         Position(0, 0),
-        "point",
         MWAjl.SED(154E6, [1, 0, 0, 0], [0]),
+        0,
+        0,
+        0,
     )]
     model = predict(uvws, times, freqs, comps, nothing, pos0)
     @test all(model[[true, false, false, true], :, :] .≈ 1)
     @test all(model[[false, true, true, false], :, :] .≈ 0)
 
     # Single source off phase center
-    comps = Component[Component(
+    comps = Component[Gaussian(
         Position(0.2, 0.2),
-        "point",
         MWAjl.SED(154E6, [1, 0, 0, 0], [0]),
+        0,
+        0,
+        0,
     )]
     model = predict(uvws, times, freqs, comps, nothing, pos0)
 
@@ -39,15 +43,19 @@ global_logger(Logging.ConsoleLogger(stderr, Logging.Debug))
 
     # Two sources off phase center
     comps = Component[
-        Component(
+        Gaussian(
             Position(0.2, 0.2),
-            "point",
             MWAjl.SED(154E6, [1, 0, 0, 0], [0]),
+            0,
+            0,
+            0,
         ),
-        Component(
+        Gaussian(
             Position(0.1, -0.15),
-            "point",
             MWAjl.SED(154E6, [1, 0, 0, 0], [0]),
+            0,
+            0,
+            0,
         ),
     ]
     model = predict(uvws, times, freqs, comps, nothing, pos0)
@@ -66,9 +74,9 @@ end
     nrows = 500_000
     nchans = 4
 
-    uvws = rand(3, nrows)
-    times = sort(rand(1.0:10.0, nrows))
-    freqs = collect(range(140E6, length=nchans, stop=160E6))
+    uvws = rand(Float32, 3, nrows)
+    times = convert(Array{Float32}, sort(rand(1.0:10.0, nrows)))
+    freqs = convert(Array{Float32}, collect(range(140E6, length=nchans, stop=160E6)))
     lambdas = 299792458 ./ freqs
     pos0 = Position(0, 0)
 
@@ -83,5 +91,5 @@ end
     gpumodel = predict(uvws, times, freqs, comps, nothing, pos0, gpu=true)
     cpumodel = predict(uvws, times, freqs, comps, nothing, pos0)
 
-    @test all(cpumodel .≈ gpumodel)
+    @test all(cpumodel .≈ Array(gpumodel))
 end

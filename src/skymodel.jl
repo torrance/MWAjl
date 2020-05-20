@@ -69,7 +69,7 @@ function instrumental(comp::Component, ν::T)::Array{T} where T <: AbstractFloat
 end
 
 
-function stokes(sed::SED, ν::Float64)::Array{Float64}
+function stokes(sed::SED, ν::T)::Array{T} where T <: AbstractFloat
     # Calculate the frequency adjust Stokes parameters
     stokes = zeros(4)  # [ I Q U V ]
     for (i, stoke) in enumerate(sed.stokes)
@@ -87,7 +87,7 @@ function stokes(sed::SED, ν::Float64)::Array{Float64}
         stokes[i] =  ℯ^logS
     end
 
-    stokes
+    convert(Array{T}, stokes)
 end
 
 
@@ -115,7 +115,7 @@ We interpolate in three ways:
 
     Or for complete control over interpolation, it is recommended to instead provide an SED.
 """
-function stokes(ms::Measurements, ν::AbstractFloat)::Array{AbstractFloat}
+function stokes(ms::Measurements, ν::T)::Array{T} where T <: AbstractFloat
     stokes = zeros(4)  # [I Q U V]
 
     # Case 1
@@ -167,7 +167,7 @@ function stokes(ms::Measurements, ν::AbstractFloat)::Array{AbstractFloat}
         end
     end
 
-    stokes
+    return convert(Array{T}, stokes)
 end
 
 
