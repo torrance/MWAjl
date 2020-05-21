@@ -22,16 +22,54 @@ function predictgaussian!(
         pas::Array{Float32, 1},
     )
 
+    # Threads.@threads doesn't work when already inside a thread (Julia v1.4)
+    # so here we are doing it ourselves.
+    # Distribute rows amongst available threads
+    N = Threads.nthreads()
+    rows = size(uvws, 2)
+    step = ceil(Int, rows / N)
+
+    tasks = Task[]
+    elapsed = Base.@elapsed for idx1 in range(1, rows, step=step)
+        idx2 = min(idx1 + step - 1, rows)
+
+        task = Threads.@spawn _predictgaussian(view(model, :, :, idx1:idx2), view(uvws, :, idx1:idx2), $lambdas, view(timesteps, idx1:idx2), $lmns, $fluxes, $majors, $minors, $pas)
+        push!(tasks, task)
+    end
+
+    # Wait for the tasks to finish
+    for task in tasks
+        wait(task)
+    end
+end
+
+@fastmath @inline @inbounds function _predictgaussian(
+    model::SubArray{ComplexF32, 3},
+    uvws::SubArray{Float32, 2},
+    lambdas::Array{Float32, 1},
+    timesteps::SubArray{Int, 1},
+    lmns::Array{Float32, 2},
+    fluxes::Array{ComplexF32, 4},
+    majors::Array{Float32, 1},
+    minors::Array{Float32, 1},
+    pas::Array{Float32, 1},
+)
     cospas, sinpas = cos.(pas), sin.(pas)
 
-    Threads.@threads for row in axes(model, 3)
+    local timestep::Int
+    local u::Float32, v::Float32, w::Float32
+    local envelope::Float32
+    local phase::ComplexF32
+
+    for row in axes(model, 3)
         timestep = timesteps[row]
-        @inbounds @fastmath for chan in axes(model, 2)
+        for chan in axes(model, 2)
             u, v, w = uvws[:, row] / lambdas[chan]
+
             for compidx in axes(fluxes, 2)
                 # Calculate Gaussian envelope, but short circuit to 1 for point sources
                 if majors[compidx] == 0 || minors[compidx] == 0
-                    envelope = 1
+                    envelope = 1.
                 else
                     envelope = exp(-2 * π^2 * (
                         majors[compidx]^2 * (u * cospas[compidx] - v * sinpas[compidx])^2 +
@@ -45,7 +83,9 @@ function predictgaussian!(
                         w * (lmns[3, compidx] - 1)
                     )
                 )
-                model[:, chan, row] .+= fluxes[:, compidx, chan, timestep] * envelope * phase
+                for pol in 1:4
+                    model[pol, chan, row] += fluxes[pol, compidx, chan, timestep] * envelope * phase
+                end
             end
         end
     end
