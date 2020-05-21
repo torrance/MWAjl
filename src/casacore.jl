@@ -97,7 +97,7 @@ for T in (Bool, Int32, Float32, Float64, Complex{Float32})
     cname = String(Symbol(:get_column_, type2str[T]))
     @eval function column(tbl::Table, colname::String, blc::Vector{Int}, trc::Vector{Int}, ::Type{$T})::Array{$T}
         ndim, shape_ptr, err = Ref{Cint}(0), Ref{Ptr{Csize_t}}(0), Ref{Int}(0)
-        data_ptr = ccall(
+        data_ptr = @threadcall(
             ($cname, libcasacore),
             Ptr{$T},
             (Ptr{Cvoid}, Cstring, Ptr{Cint}, Ptr{Ptr{Csize_t}}, Cint, Ptr{Csize_t}, Ptr{Csize_t},Ptr{Int}),
