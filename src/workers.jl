@@ -95,16 +95,19 @@ function producer(ch, mset, comps, beam, args)
             @debug "New data flagged and sanitised, elapsed $elapsed"
 
             # Send data to consumers
-            for chstart in 1:args["chanwidth"]:(batchend - batchstart + 1)
-                chend = min(mset.nchans, chstart + args["chanwidth"] - 1)
-                put!(ch, (
-                    data[:, chstart:chend, :],
-                    model[:, chstart:chend, :],
-                    weights[:, chstart:chend, :],
-                    ants1, ants2, chanblock, timeblock
-                ))
-                chanblock += 1
+            elapsed = Base.@elapsed begin
+                for chstart in 1:args["chanwidth"]:(batchend - batchstart + 1)
+                    chend = min(mset.nchans, chstart + args["chanwidth"] - 1)
+                    put!(ch, (
+                        data[:, chstart:chend, :],
+                        model[:, chstart:chend, :],
+                        weights[:, chstart:chend, :],
+                        ants1, ants2, chanblock, timeblock
+                    ))
+                    chanblock += 1
+                end
             end
+            @debug "Data set to consumers, elapsed $elapsed"
         end
     end
 end
