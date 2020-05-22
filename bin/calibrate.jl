@@ -122,17 +122,17 @@ function main(args)
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    s = ArgParseSettings()
+    s = ArgParseSettings("Calibrate Murchison Widefield Array (MWA) observations. See https://torrance.github.io/MWAjl/")
     @add_arg_table! s begin
         "--model", "-m"
-            help="The path to the model file (aoskymodel 1.2 format). If absent, will use MODEL_DATA column (ie. self-calibration)."
+            help="The path to the model file (aoskymodel 1.2 format). If absent, will use the --modelcolumn column (e.g. during self-calibration)."
             arg_type=String
         "--chanwidth", "-c"
-            help="Find calibration solutions for blocks of channels of `chanwidth`. Set to 0 to find a single solution for all channels."
+            help="Find calibration solutions for blocks of channels of --chanwidth. Set to 0 to find a single solution for all channels. Larger values may provide more signal and aid in finding a better calibration solution but at the expense of ignoring frequency-dependenct changes to the calibration solution."
             arg_type=Int
             default=1
         "--timewidth", "-t"
-            help="Find calibrations solutions for blocks of time steps of `timewidth`. Defaults to 0, which implies an infinite time width."
+            help="Find calibrations solutions for blocks of timesteps of --timewidth. Defaults to 0, which implies an infinite time width. The duration of a timestep depends on the resolution of the Measurement Set and any averaging in time that may have be performed. e.g. A 2 minute observation with time resolution 4 s will have 30 timesteps; setting --timewidth 10 will result in 3 independent solutions in time."
             arg_type=Int
             default=0
         "--minuv"
@@ -144,39 +144,43 @@ if abspath(PROGRAM_FILE) == @__FILE__
             arg_type=Float64
             default=9E99
         "--tolerance", "-a"
-            help="These two values determine whether 1) a solution has sufficiently converged that we can accept its answer and 2) whether it has converged enough that we may stop prior to reaching `max-iterations`. These values are tested after each iteration by comparing the magnitude difference between the current solution and the solution from the last iteration."
+            help="Determines whether a particular calibration solution has converged. Consists of two values: mininum accuracy and stopping accuracy. These two values determine whether 1) a solution has sufficiently converged that we can accept its answer and 2) whether it has converged enough that we may stop prior to reaching --max-iterations. These values are tested after each iteration by comparing the magnitude difference between the current solution and prior solution."
             arg_type=Float64
             nargs=2
             default=[1E-5, 1E-8]
         "--max-iterations", "-i"
-            help="The maximum number of iterations allowed when solving for a single solution unit (ie. for a given channel and time block)."
+            help="The maximum number of iterations allowed when solving for a single solution unit (i.e. for a given channel and time block). Usually a good solution can be found in 10-20 iterations. If you consistently hit the default limit, consider relaxing the --tolerance stopping accuracy. Higher --max-iteration values than the default are of dubious benefit."
             arg_type=Int
             default=50
         "--apply-beam"
-            help="Apply MWA beam during model prediction."
+            help="Apply the MWA beam during model prediction to correct model flux values from their true values to their apparent values. The beam is calculated in full polarization for each timestep and for each coarse channel."
             action=:store_true
         "--datacolumn"
+            help="The uncalibrated data column in the Measurement Set. Case sensitive."
             arg_type=String
             default="DATA"
         "--modelcolumn"
+            help="The model data column in the Measurement Set that is used when --model is not provided. Case sensitive."
             arg_type=String
             default="MODEL_DATA"
         "--nbatch"
-            help="When reading from `datacolumn` and `modelcolumn`, this parameter specifies how many `chanwidth` arrays to read. Ideally, this needs to be large enough so that calibration workers aren't waiting on data to be read from disk, but not so large that too long is spent waiting at the start of the program for the calibration workers to begin work. This parameter also affects maximum memory usage. Default (0) sets this to 200 / --chanwidth."
+            help="When reading from --datacolumn and --modelcolumn, this parameter specifies how many --chanwidth by --timewidth arrays to read. This parameter only affects performance and memory usage. Ideally, this needs to be large enough so that calibration workers aren't waiting on data to be read from disk, but not so large that too long is spent waiting at the start of the program for the calibration workers to begin work. Reducing this value will reduce maximum memory usage proportionally. Default (0) sets this to 200 / --chanwidth."
             arg_type=Int
             default=0
         "--gpu"
-            help="Use GPU acceleration for some calculations."
+            help="Use GPU acceleration for model prediction. Requires a CUDA capable graphics card and associated CUDA drivers."
             action=:store_true
         "--verbose"
+            help="Print logging information about what calibrate is doing."
             action=:store_true
         "--debug"
+            help="Print lots more logging information about what calibrate is doing."
             action=:store_true
         "mset"
-            help="The path to the measurement set to be calibrated."
+            help="The path to the CASA Measurement Set to be calibrated."
             required=true
         "solution"
-            help="The output solution file name and path. eg. folder/to/go/solution.bin"
+            help="The output solution file name and path. e.g. folder/to/go/solutions.bin"
             required=true
     end
 
