@@ -43,8 +43,8 @@ function producer(ch, mset, comps, beam, args)
             select * from \$1 where
             ANTENNA1 <> ANTENNA2
             and not FLAG_ROW
-            and SUM(SUMSQR(UVW)) > $(args["minuv"])
-            and SUM(SUMSQR(UVW)) < $(args["maxuv"])
+            and SUMSQR(UVW) > $(args["minuv"]^2)
+            and SUMSQR(UVW) < $(args["maxuv"]^2)
             and TIME >= $(mset.unique_timesteps[t1])
             and TIME <= $(mset.unique_timesteps[t2])
         ", mset.table)
