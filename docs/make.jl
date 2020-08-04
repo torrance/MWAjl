@@ -9,7 +9,3 @@ makedocs(
         ],
     ),
 )
-
-deploydocs(
-    repo = "github.com/torrance/MWAjl.git",
-)

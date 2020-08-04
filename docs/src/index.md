@@ -207,9 +207,9 @@ Note that for self-calibration the GPU is not used at all. As it turned out, the
 
 ### IO issues
 
-A significant bottleneck of `calibrate` is reading data from disk. `calibrate` uses the CasaCore library to read visibility data that is in the Measurement Set format. The `--nbatch` option controls how we read data from the Measurement Set, but usually we read a handful of channels at a time (as opposed all channels) to reduce overall memory usage, and this data is not contiguous on disk. For a hard disk drive (i.e. spinning platters), the extra time associated with seeking can add overhead. And on non-local storage such as in a supercomputing cluster, the time spent reading from disk may be the most significant factor in the performance of `calibrate`.
+A significant bottleneck of `calibrate` is reading data from disk. `calibrate` uses the CasaCore library to read visibility data that is in the Measurement Set format. The `--nbatch` option controls how we read data from the Measurement Set, and with default values we read several hundred channels at a time as this is more performant. However, this data is not contiguous on disk. For a hard disk drive (i.e. spinning platters), the extra time associated with seeking can add overhead. And on non-local storage such as in a supercomputing cluster, the time spent reading from disk may be the most significant factor in the performance of `calibrate`.
 
-Additionally, even when the Measurement Set is stored entirely in memory, there is still some overhead associated with CasaCore itself. For example, on my system it takes 5 s to read the first 100 channels from a Measurement Set that is stored in a tmpfs. It is certainly worth investigating with alternative storages such as HDF5 suffer from the same overhead.
+Additionally, even when the Measurement Set is stored entirely in memory, there is still some overhead associated with CasaCore itself. For example, on my system it takes 5 s to read the first 100 channels from a Measurement Set that is stored in a tmpfs. It is certainly worth investigating whether alternative storages such as HDF5 suffer from the same overhead.
 
 ## Todo:
 
