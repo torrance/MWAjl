@@ -1,4 +1,5 @@
 using ArgParse
+using LinearAlgebra: SingularException
 using Logging
 using MWAjl
 
@@ -103,7 +104,15 @@ function main(args)
 
     # Invert jones Matrices so that they can be applied as J D J^H
     for timeblock in axes(jones, 4), chanblock in axes(jones, 3), antid in axes(jones, 2)
-        @views invA!(jones[:, antid, chanblock, timeblock])
+        try
+            @views invA!(jones[:, antid, chanblock, timeblock])
+        catch e
+            if isa(e, SingularException)
+                jones[:, antid, chanblock, timeblock] .= NaN
+            else
+                rethrow(e)
+            end
+        end
     end
 
     # Write out the solution
