@@ -6,11 +6,9 @@ artifact_toml = joinpath(@__DIR__, "../Artifacts.toml")
 
 # [ name, platform, lazy, url]
 artifacts = [
-    ("libbeam.so", Linux(:x86_64), false, "https://github.com/torrance/MWAjl/raw/artifacts/x86_64/libbeam.so.tar.gz"),
     ("libcasacorejl.so", Linux(:x86_64), false, "https://github.com/torrance/MWAjl/raw/artifacts/x86_64/libcasacorejl.so.tar.gz"),
     ("mwabeam", nothing, false, "https://github.com/torrance/MWAjl/releases/download/assets-v1/mwa_full_embedded_element_pattern.h5.tar.gz"),
     ("testdata", nothing, true, "https://github.com/torrance/MWAjl/releases/download/assets-v1/data.tar.gz"),
-
 ]
 
 for (name, platform, lazy, url) in artifacts

@@ -67,10 +67,10 @@ function predict(
                     # MWA Beam is calculated on coarse channels ~ 1.28 MHz
                     # There's no need to calculate the beam values more than once
                     # in this interval.
-                    current_coarse_freq = closest_freq(beam, Float64(freq))
+                    current_coarse_freq = closest_freq(beam, UInt32(freq))
                     if current_coarse_freq != prior_coarse_freq
                         jones = reshape(
-                            beamjones(beam, Float64(freq), alts, azs),
+                            calc_jones(beam, azs, pi/2 .- alts, UInt32(freq)),
                             4, length(comps), length(unique_times)
                         )
                         prior_coarse_freq = current_coarse_freq

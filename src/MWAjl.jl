@@ -1,11 +1,11 @@
 module MWAjl
 
 include("beam.jl")
-export Beam, beamjones, closest_freq
+export Beam, calc_jones, closest_freq
 
 include("skymodel.jl")
 include("skymodel_parser.jl")
-export parse_model, gettoken, stokes, Source, Component, SED, Measurements, Position, lmn
+export parse_model, gettoken, stokes, Source, Component, SED, Measurements, Position, lmn, instrumental
 
 include("components/gaussian.jl")
 export Gaussian, predictgaussian!
