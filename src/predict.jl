@@ -61,21 +61,12 @@ function predict(
         @debug "Calculated AltAz positions of $(length(comps)) at $(length(unique_times)) timesteps, elapsed $elapsed"
 
         # Get beam Jones matrix, and correct model fluxes to apparent fluxes
-        let prior_coarse_freq = 0.0, tmp = zeros(ComplexF32, 4), jones = Array{ComplexF64, 3}(undef, 0, 0, 0)
+        let tmp = zeros(ComplexF32, 4)
             elapsed = Base.@elapsed for (chan, freq) in enumerate(freqs)
-                begin
-                    # MWA Beam is calculated on coarse channels ~ 1.28 MHz
-                    # There's no need to calculate the beam values more than once
-                    # in this interval.
-                    current_coarse_freq = closest_freq(beam, UInt32(freq))
-                    if current_coarse_freq != prior_coarse_freq
-                        jones = reshape(
-                            calc_jones(beam, azs, pi/2 .- alts, UInt32(freq)),
-                            4, length(comps), length(unique_times)
-                        )
-                        prior_coarse_freq = current_coarse_freq
-                    end
-                end
+                jones = reshape(
+                    calc_jones(beam, azs, pi/2 .- alts, UInt32(freq)),
+                    4, length(comps), length(unique_times)
+                )
 
                 # apparent = J A J^H
                 @views for timeidx in axes(jones, 3), compidx in axes(jones, 2)
